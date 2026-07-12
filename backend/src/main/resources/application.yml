@@ -20,6 +20,16 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 mawa3id:
   jwt:
     # Provide a Base64-encoded key (>= 256 bits) via JWT_SECRET. When left blank the
@@ -27,6 +37,15 @@ mawa3id:
     # survive restarts). Always set JWT_SECRET in staging/production.
     secret: ${JWT_SECRET:}
     expiration-ms: ${JWT_EXPIRATION:86400000}
+    # Set JWT_FAIL_ON_MISSING_SECRET=true in staging/production so the app refuses to
+    # boot with a throwaway ephemeral key instead of silently accepting one.
+    fail-on-missing-secret: ${JWT_FAIL_ON_MISSING_SECRET:false}
+  ratelimit:
+    # Per-IP fixed-window throttle on the public auth endpoints (login/register).
+    enabled: ${RATELIMIT_ENABLED:true}
+    auth:
+      capacity: ${RATELIMIT_AUTH_CAPACITY:10}
+      window-seconds: ${RATELIMIT_AUTH_WINDOW_SECONDS:60}
 
 springdoc:
   swagger-ui:

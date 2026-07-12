@@ -19,3 +19,8 @@ spring:
 mawa3id:
   jwt:
     expiration-ms: 86400000
+  ratelimit:
+    # Off by default so the shared integration suite (many auth calls from one IP per
+    # run) isn't throttled. RateLimitingIntegrationTest re-enables it via @SpringBootTest
+    # properties with a low capacity.
+    enabled: false

@@ -22,8 +22,15 @@ public class JwtService {
     private final long expirationMs;
 
     public JwtService(@Value("${mawa3id.jwt.secret:}") String secret,
-                      @Value("${mawa3id.jwt.expiration-ms}") long expirationMs) {
+                      @Value("${mawa3id.jwt.expiration-ms}") long expirationMs,
+                      @Value("${mawa3id.jwt.fail-on-missing-secret:false}") boolean failOnMissingSecret) {
         if (secret == null || secret.isBlank()) {
+            if (failOnMissingSecret) {
+                // Guard against booting a real deployment with a throwaway key. Set
+                // JWT_FAIL_ON_MISSING_SECRET=true (e.g. in prod) to make this fatal.
+                throw new IllegalStateException("JWT secret is required but not configured. "
+                        + "Set JWT_SECRET (a Base64-encoded key of at least 256 bits).");
+            }
             // No secret configured (e.g. local/dev/test). Generate an ephemeral key so
             // the app still runs, but tokens are invalidated on restart. Production MUST
             // set JWT_SECRET (a Base64-encoded key of at least 256 bits).
