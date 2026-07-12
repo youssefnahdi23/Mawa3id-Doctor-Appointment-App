@@ -1,6 +1,7 @@
 package com.mawa3id.config;
 
 import com.mawa3id.common.ApiError;
+import com.mawa3id.ratelimit.RateLimitingFilter;
 import com.mawa3id.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
@@ -23,10 +24,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          RateLimitingFilter rateLimitingFilter, ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
         this.objectMapper = objectMapper;
     }
 
@@ -42,7 +46,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/specialties/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/doctors/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                                "/actuator/health").permitAll()
+                                "/actuator/health", "/actuator/health/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
@@ -51,6 +55,10 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeError(response, HttpStatus.FORBIDDEN, "Access denied",
                                         request.getRequestURI())))
+                // Rate limiter is added first so it sits ahead of the JWT filter in the
+                // chain, guarding the permitAll login/register endpoints. Both are anchored
+                // to a known Spring Security filter (you cannot order relative to a custom one).
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

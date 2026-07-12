@@ -47,12 +47,29 @@ environment.
 | `DB_PASSWORD` | _(empty)_ | **set this** — DB password |
 | `JWT_SECRET` | _(empty)_ | Base64 key ≥ 256-bit. If unset, an **ephemeral** key is generated at startup (tokens don't survive restarts). **Set in production.** |
 | `JWT_EXPIRATION` | `86400000` | token lifetime in ms (24h) |
+| `JWT_FAIL_ON_MISSING_SECRET` | `false` | when `true`, the app **refuses to boot** without a `JWT_SECRET` instead of generating an ephemeral key. **Set `true` in staging/production.** |
+| `RATELIMIT_ENABLED` | `true` | per-IP throttle on `/api/auth/login` and `/api/auth/register/**` |
+| `RATELIMIT_AUTH_CAPACITY` | `10` | max auth requests per IP per window |
+| `RATELIMIT_AUTH_WINDOW_SECONDS` | `60` | rate-limit window length |
 | `SERVER_PORT` | `8080` | HTTP port |
+
+### Operational endpoints
+
+- `GET /actuator/health` — liveness/readiness (public, no auth). Use for container probes.
+
+### Hardening notes
+
+- **Auth rate limiting** returns `429 Too Many Requests` once an IP exceeds the
+  window. State is in-memory (per instance) — sufficient for a single-instance
+  deployment; use a shared store if scaling horizontally.
+- **Consistent errors:** malformed JSON, bad path/param types, unsupported methods,
+  and unknown routes return structured `4xx` `ApiError` bodies (not `500`).
 
 ## Testing
 
 ```bash
-mvn test
+mvn test          # run the test suite (H2 in-memory)
+mvn verify        # tests + JaCoCo coverage report and gate
 ```
 
 Tests run entirely on in-memory H2 (Flyway disabled, Hibernate `create-drop`),

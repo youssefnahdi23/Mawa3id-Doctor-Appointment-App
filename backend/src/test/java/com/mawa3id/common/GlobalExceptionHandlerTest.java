@@ -4,11 +4,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -74,6 +79,55 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().message()).isEqualTo("Access denied");
+    }
+
+    @Test
+    void handleUnreadableMapsToBadRequest() {
+        ResponseEntity<ApiError> response = handler.handleUnreadable(
+                new HttpMessageNotReadableException("bad json"), requestTo("/api/auth/login"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).isEqualTo("Malformed or missing request body");
+    }
+
+    @Test
+    void handleTypeMismatchMapsToBadRequestAndNamesParameter() {
+        MethodArgumentTypeMismatchException ex = mock(MethodArgumentTypeMismatchException.class);
+        when(ex.getName()).thenReturn("id");
+
+        ResponseEntity<ApiError> response = handler.handleTypeMismatch(ex, requestTo("/api/doctors/abc"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).contains("id");
+    }
+
+    @Test
+    void handleMethodNotSupportedMapsTo405() {
+        ResponseEntity<ApiError> response = handler.handleMethodNotSupported(
+                new HttpRequestMethodNotSupportedException("POST"), requestTo("/api/specialties"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @Test
+    void handleUnsupportedMediaTypeMapsTo415() {
+        ResponseEntity<ApiError> response = handler.handleUnsupportedMediaType(
+                new HttpMediaTypeNotSupportedException("text/plain"), requestTo("/api/auth/login"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @Test
+    void handleNoResourceMapsTo404() {
+        ResponseEntity<ApiError> response = handler.handleNoResource(
+                new NoResourceFoundException(org.springframework.http.HttpMethod.GET, "/nope"),
+                requestTo("/nope"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(404);
     }
 
     @Test

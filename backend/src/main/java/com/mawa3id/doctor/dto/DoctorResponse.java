@@ -13,7 +13,8 @@ public record DoctorResponse(
         String workingHours,
         String phone,
         String bio,
-        AcceptanceMode acceptanceMode
+        AcceptanceMode acceptanceMode,
+        int slotDurationMinutes
 ) {
     public static DoctorResponse from(Doctor doctor) {
         return new DoctorResponse(
@@ -25,6 +26,7 @@ public record DoctorResponse(
                 doctor.getWorkingHours(),
                 doctor.getPhone(),
                 doctor.getBio(),
-                doctor.getAcceptanceMode());
+                doctor.getAcceptanceMode(),
+                doctor.getSlotDurationMinutes());
     }
 }
