@@ -1,5 +1,7 @@
 package com.mawa3id.schedule;
 
+import com.mawa3id.appointment.AppointmentStatus;
+import com.mawa3id.appointment.AppointmentRepository;
 import com.mawa3id.common.ApiException;
 import com.mawa3id.doctor.Doctor;
 import com.mawa3id.doctor.DoctorService;
@@ -18,8 +20,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Computes bookable slots from a doctor's weekly availability and the doctor's
@@ -32,10 +36,13 @@ public class ScheduleService {
     static final int MAX_RANGE_DAYS = 31;
 
     private final DoctorAvailabilityRepository availabilityRepository;
+    private final AppointmentRepository appointmentRepository;
     private final DoctorService doctorService;
 
-    public ScheduleService(DoctorAvailabilityRepository availabilityRepository, DoctorService doctorService) {
+    public ScheduleService(DoctorAvailabilityRepository availabilityRepository,
+                           AppointmentRepository appointmentRepository, DoctorService doctorService) {
         this.availabilityRepository = availabilityRepository;
+        this.appointmentRepository = appointmentRepository;
         this.doctorService = doctorService;
     }
 
@@ -78,6 +85,7 @@ public class ScheduleService {
         Doctor doctor = doctorService.getByUserId(doctorUserId);
         int slotMinutes = doctor.getSlotDurationMinutes();
         Map<DayOfWeek, List<DoctorAvailability>> rulesByDay = groupByDay(doctorUserId);
+        Set<LocalDateTime> booked = bookedSlotStarts(doctorUserId, from, to);
         LocalDateTime now = LocalDateTime.now();
 
         List<SlotResponse> slots = new ArrayList<>();
@@ -85,14 +93,43 @@ public class ScheduleService {
             for (DoctorAvailability rule : rulesByDay.getOrDefault(date.getDayOfWeek(), List.of())) {
                 for (LocalTime start : sliceSlots(rule, slotMinutes)) {
                     LocalDateTime slotStart = LocalDateTime.of(date, start);
-                    // Only future slots are bookable. (Phase B also excludes booked slots here.)
-                    if (slotStart.isAfter(now)) {
+                    // A slot is free if it is in the future and not already booked.
+                    if (slotStart.isAfter(now) && !booked.contains(slotStart)) {
                         slots.add(new SlotResponse(slotStart, slotStart.plusMinutes(slotMinutes)));
                     }
                 }
             }
         }
         return slots;
+    }
+
+    /**
+     * Whether {@code startTime} is a real, future slot of the doctor: aligned to one of the
+     * doctor's availability windows sliced by their slot duration. Booking conflicts are
+     * checked separately by the appointment service.
+     */
+    @Transactional(readOnly = true)
+    public boolean isSlotBookable(Long doctorUserId, LocalDateTime startTime) {
+        if (startTime == null || !startTime.isAfter(LocalDateTime.now())) {
+            return false;
+        }
+        Doctor doctor = doctorService.getByUserId(doctorUserId);
+        int slotMinutes = doctor.getSlotDurationMinutes();
+        for (DoctorAvailability rule :
+                groupByDay(doctorUserId).getOrDefault(startTime.getDayOfWeek(), List.of())) {
+            if (sliceSlots(rule, slotMinutes).contains(startTime.toLocalTime())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Set<LocalDateTime> bookedSlotStarts(Long doctorUserId, LocalDate from, LocalDate to) {
+        Set<LocalDateTime> booked = new HashSet<>();
+        appointmentRepository.findByDoctorUserIdAndStatusInAndStartTimeBetween(
+                        doctorUserId, AppointmentStatus.ACTIVE, from.atStartOfDay(), to.atTime(LocalTime.MAX))
+                .forEach(a -> booked.add(a.getStartTime()));
+        return booked;
     }
 
     /** Cuts an availability window into whole slot-duration chunks (dropping any remainder). */

@@ -12,12 +12,14 @@ support development via donations (bank card / Patreon).
 | Iteration | Scope | Status |
 |-----------|-------|--------|
 | 1 | Backend foundation: JWT auth (doctors & patients), doctor profiles, specialties, browse/filter | ✅ Done |
-| 2 | Appointments (RDV): booking, manual/auto acceptance, doctor availability | ⏳ Planned |
+| 2 | Appointments (RDV): weekly availability, computed slots, booking, manual/auto acceptance | ✅ Done |
 | 3 | Donations (card via Stripe + Patreon link) | ⏳ Planned |
 | 4 | Flutter mobile app | ⏳ Planned |
 
-The doctor `acceptanceMode` (`MANUAL` / `AUTO`) setting is already modelled so the
-appointment flow in iteration 2 slots in cleanly.
+Doctors publish weekly availability windows and a per-doctor slot duration; the server
+computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
+`PENDING`, `AUTO` → `ACCEPTED`). Times are clinic-local (single-region; no timezone
+conversion yet).
 
 ## Backend
 
@@ -64,7 +66,20 @@ mvn test
 | `GET`  | `/api/specialties` | public | List specialties |
 | `GET`  | `/api/doctors?specialtyId=&q=&page=&size=` | public | Browse / filter doctors |
 | `GET`  | `/api/doctors/{id}` | public | Doctor detail |
-| `PUT`  | `/api/doctors/me` | `DOCTOR` | Update own profile (incl. `acceptanceMode`) |
+| `PUT`  | `/api/doctors/me` | `DOCTOR` | Update own profile (incl. `acceptanceMode`, `slotDurationMinutes`) |
 | `GET`  | `/api/patients/me`, `PUT /api/patients/me` | `PATIENT` | View / update own profile |
+
+### Appointments (iteration 2)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/api/doctors/{id}/availability` | public | Doctor's weekly availability |
+| `PUT`  | `/api/doctors/me/availability` | `DOCTOR` | Replace own weekly availability |
+| `GET`  | `/api/doctors/{id}/slots?from=&to=` | public | Computed free slots (range ≤ 31 days) |
+| `POST` | `/api/appointments` | `PATIENT` | Book a slot (`PENDING` or `ACCEPTED` per `acceptanceMode`) |
+| `GET`  | `/api/appointments/me?status=` | `PATIENT` | Patient's appointments |
+| `GET`  | `/api/appointments?status=` | `DOCTOR` | Doctor's appointment queue |
+| `PUT`  | `/api/appointments/{id}/accept`, `/reject` | `DOCTOR` | Accept / reject a pending appointment |
+| `PUT`  | `/api/appointments/{id}/cancel` | `PATIENT` or `DOCTOR` | Cancel own appointment |
 
 Send the token as `Authorization: Bearer <token>`.

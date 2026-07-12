@@ -1,5 +1,6 @@
 package com.mawa3id.schedule;
 
+import com.mawa3id.appointment.AppointmentRepository;
 import com.mawa3id.common.ApiException;
 import com.mawa3id.doctor.Doctor;
 import com.mawa3id.doctor.DoctorService;
@@ -32,10 +33,20 @@ class ScheduleServiceTest {
     private DoctorAvailabilityRepository availabilityRepository;
 
     @Mock
+    private AppointmentRepository appointmentRepository;
+
+    @Mock
     private DoctorService doctorService;
 
     @InjectMocks
     private ScheduleService scheduleService;
+
+    private void noBookings() {
+        when(appointmentRepository.findByDoctorUserIdAndStatusInAndStartTimeBetween(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of());
+    }
 
     private static final LocalDate FUTURE_MONDAY =
             LocalDate.now().plusYears(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
@@ -60,6 +71,7 @@ class ScheduleServiceTest {
         when(doctorService.getByUserId(1L)).thenReturn(doctor);
         when(availabilityRepository.findByDoctorUserIdOrderByDayOfWeekAscStartTimeAsc(1L))
                 .thenReturn(List.of(rule(doctor, DayOfWeek.MONDAY, "09:00", "12:00")));
+        noBookings();
 
         List<SlotResponse> slots = scheduleService.computeFreeSlots(1L, FUTURE_MONDAY, FUTURE_MONDAY);
 
@@ -76,6 +88,7 @@ class ScheduleServiceTest {
         when(doctorService.getByUserId(1L)).thenReturn(doctor);
         when(availabilityRepository.findByDoctorUserIdOrderByDayOfWeekAscStartTimeAsc(1L))
                 .thenReturn(List.of(rule(doctor, DayOfWeek.MONDAY, "09:00", "09:50")));
+        noBookings();
 
         List<SlotResponse> slots = scheduleService.computeFreeSlots(1L, FUTURE_MONDAY, FUTURE_MONDAY);
 
@@ -90,6 +103,7 @@ class ScheduleServiceTest {
         when(doctorService.getByUserId(1L)).thenReturn(doctor);
         when(availabilityRepository.findByDoctorUserIdOrderByDayOfWeekAscStartTimeAsc(1L))
                 .thenReturn(List.of(rule(doctor, DayOfWeek.MONDAY, "09:00", "12:00")));
+        noBookings();
 
         List<SlotResponse> slots = scheduleService.computeFreeSlots(1L, PAST_MONDAY, PAST_MONDAY);
 
@@ -102,6 +116,7 @@ class ScheduleServiceTest {
         when(doctorService.getByUserId(1L)).thenReturn(doctor);
         when(availabilityRepository.findByDoctorUserIdOrderByDayOfWeekAscStartTimeAsc(1L))
                 .thenReturn(List.of());
+        noBookings();
 
         assertThat(scheduleService.computeFreeSlots(1L, FUTURE_MONDAY, FUTURE_MONDAY)).isEmpty();
     }
