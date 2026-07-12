@@ -46,6 +46,19 @@ mawa3id:
     auth:
       capacity: ${RATELIMIT_AUTH_CAPACITY:10}
       window-seconds: ${RATELIMIT_AUTH_WINDOW_SECONDS:60}
+  donation:
+    # Card donations via Stripe Checkout. Secrets are provided via environment
+    # variables; nothing sensitive is committed. Set DONATIONS_ENABLED=false to turn
+    # off card donations (the Patreon link can still be surfaced).
+    enabled: ${DONATIONS_ENABLED:true}
+    currency: ${DONATION_CURRENCY:usd}
+    min-amount-minor: ${DONATION_MIN_AMOUNT_MINOR:100}
+    patreon-url: ${PATREON_URL:}
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+      success-url: ${STRIPE_SUCCESS_URL:http://localhost:8080/donation/success}
+      cancel-url: ${STRIPE_CANCEL_URL:http://localhost:8080/donation/cancel}
 
 springdoc:
   swagger-ui:

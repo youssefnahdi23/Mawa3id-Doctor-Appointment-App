@@ -45,6 +45,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/register/**", "/api/auth/login").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/specialties/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/doctors/**").permitAll()
+                        // Donations: starting a donation and the Stripe webhook are public
+                        // (anonymous donations allowed; the webhook is verified by signature).
+                        // Donation history (/api/donations/me) stays authenticated by default.
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/donations", "/api/donations/webhook").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/donations/config").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/actuator/health", "/actuator/health/**").permitAll()
                         .anyRequest().authenticated())
