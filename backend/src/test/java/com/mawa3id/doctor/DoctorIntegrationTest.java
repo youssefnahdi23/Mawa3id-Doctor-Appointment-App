@@ -135,6 +135,34 @@ class DoctorIntegrationTest {
     }
 
     @Test
+    void combinedSpecialtyAndNameFilterReturnsIntersection() throws Exception {
+        registerDoctor("heart1@example.com", "Alice Heart", cardiologyId);
+        registerDoctor("heart2@example.com", "Bob Heart", cardiologyId);
+        registerDoctor("skin1@example.com", "Alice Skin", dermatologyId);
+
+        // specialtyId (cardiology) AND q ("alice") must both match -> only "Alice Heart".
+        mockMvc.perform(get("/api/doctors")
+                        .param("specialtyId", cardiologyId.toString())
+                        .param("q", "alice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Alice Heart"));
+    }
+
+    @Test
+    void doctorUpdateWithBlankNameIsBadRequest() throws Exception {
+        String token = registerDoctor("blank@example.com", "Dr Named", cardiologyId);
+
+        // Authenticated DOCTOR so we get past @PreAuthorize and actually hit bean validation.
+        mockMvc.perform(put("/api/doctors/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.name").isNotEmpty());
+    }
+
+    @Test
     void listRespectsPageSize() throws Exception {
         registerDoctor("p1@example.com", "Dr Alpha", cardiologyId);
         registerDoctor("p2@example.com", "Dr Beta", dermatologyId);

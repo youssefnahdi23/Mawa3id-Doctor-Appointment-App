@@ -121,6 +121,42 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+                    <execution>
+                        <!--
+                          Coverage gate. Thresholds are set conservatively below the
+                          level the suite currently achieves (~97% instructions, ~85%
+                          branches) so the build fails on a regression without being
+                          flaky. Ratchet these up as coverage grows. Trivial
+                          bootstrap/DTO glue is excluded so it does not dilute the signal.
+                        -->
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>com/mawa3id/Mawa3idApplication.class</exclude>
+                            </excludes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.75</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
