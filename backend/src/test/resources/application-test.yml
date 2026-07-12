@@ -24,3 +24,7 @@ mawa3id:
     # run) isn't throttled. RateLimitingIntegrationTest re-enables it via @SpringBootTest
     # properties with a low capacity.
     enabled: false
+  donation:
+    # Card donations exercised via StubPaymentGateway (test profile). A Patreon URL is
+    # set so the /api/donations/config test asserts a concrete value.
+    patreon-url: https://patreon.com/mawa3id-test

@@ -19,6 +19,9 @@ Feature-package layout (`com.mawa3id.<feature>`):
 - `specialty` — specialty catalog (seeded via Flyway `V1__init.sql`)
 - `doctor` — doctor profile, browse/filter/search, self-service update
 - `patient` — patient profile, auto-generated `patientCode` (e.g. `MW-7K3PQ9`)
+- `schedule` / `appointment` — weekly availability, computed slots, booking lifecycle
+- `donation` — Stripe-backed card donations behind a `PaymentGateway` interface, plus a
+  Patreon link; the Stripe adapter is stubbed in tests
 - `common` — `ApiError` + `GlobalExceptionHandler` (consistent error shape)
 - `config` — security, CORS, OpenAPI, stable `Page` serialization
 
@@ -51,6 +54,14 @@ environment.
 | `RATELIMIT_ENABLED` | `true` | per-IP throttle on `/api/auth/login` and `/api/auth/register/**` |
 | `RATELIMIT_AUTH_CAPACITY` | `10` | max auth requests per IP per window |
 | `RATELIMIT_AUTH_WINDOW_SECONDS` | `60` | rate-limit window length |
+| `DONATIONS_ENABLED` | `true` | when `false`, `POST /api/donations` returns `503` (Patreon link still served) |
+| `DONATION_CURRENCY` | `usd` | default ISO-4217 currency when a request omits one |
+| `DONATION_MIN_AMOUNT_MINOR` | `100` | minimum accepted amount in minor units (e.g. cents) |
+| `PATREON_URL` | _(empty)_ | Patreon link returned by `/api/donations/config` |
+| `STRIPE_SECRET_KEY` | _(empty)_ | Stripe API secret key — **set to enable card donations** |
+| `STRIPE_WEBHOOK_SECRET` | _(empty)_ | Stripe webhook signing secret, verifies `POST /api/donations/webhook` |
+| `STRIPE_SUCCESS_URL` | `.../donation/success` | redirect after a successful checkout |
+| `STRIPE_CANCEL_URL` | `.../donation/cancel` | redirect after a cancelled checkout |
 | `SERVER_PORT` | `8080` | HTTP port |
 
 ### Operational endpoints
@@ -86,7 +97,19 @@ specialties(id, name UNIQUE, description)
 patients(user_id PK→users, full_name, date_of_birth, patient_code UNIQUE)
 doctors(user_id PK→users, name, specialty_id→specialties, cabinet_address,
         working_hours, phone, bio, acceptance_mode)
+donations(id, user_id→users NULLABLE, amount_minor, currency, status, provider,
+          provider_session_id UNIQUE, provider_payment_ref, donor_name, message,
+          created_at, updated_at)
 ```
+
+### Donation lifecycle
+
+`POST /api/donations` persists a `PENDING` donation (anonymous, or attributed to the
+caller when a JWT is present), opens a Stripe Checkout session, and returns its
+`checkoutUrl`. Stripe later calls `POST /api/donations/webhook`; the signed event is
+verified and the matching donation transitions to `SUCCEEDED` / `EXPIRED` / `FAILED`.
+Webhook handling is idempotent — unknown sessions and already-finalised donations are
+acknowledged with no change.
 
 ## Example flow
 

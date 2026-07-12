@@ -13,7 +13,7 @@ support development via donations (bank card / Patreon).
 |-----------|-------|--------|
 | 1 | Backend foundation: JWT auth (doctors & patients), doctor profiles, specialties, browse/filter | ✅ Done |
 | 2 | Appointments (RDV): weekly availability, computed slots, booking, manual/auto acceptance | ✅ Done |
-| 3 | Donations (card via Stripe + Patreon link) | ⏳ Planned |
+| 3 | Donations (card via Stripe + Patreon link) | ✅ Done |
 | 4 | Flutter mobile app | ⏳ Planned |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
@@ -43,6 +43,12 @@ variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`,
 `JWT_EXPIRATION`, `SERVER_PORT`. If `JWT_SECRET` is unset the app generates an
 **ephemeral** signing key at startup (fine locally; tokens are invalidated on
 restart) — always set `JWT_SECRET` in staging/production.
+
+Donations (iteration 3) add: `DONATIONS_ENABLED`, `DONATION_CURRENCY`,
+`DONATION_MIN_AMOUNT_MINOR`, `PATREON_URL`, and the Stripe settings
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SUCCESS_URL`,
+`STRIPE_CANCEL_URL`. Card donations are disabled cleanly (503) if the feature is
+turned off; the Patreon link is still served from `PATREON_URL`.
 
 Interactive API docs: `http://localhost:8080/swagger-ui.html`
 
@@ -82,4 +88,14 @@ mvn test
 | `PUT`  | `/api/appointments/{id}/accept`, `/reject` | `DOCTOR` | Accept / reject a pending appointment |
 | `PUT`  | `/api/appointments/{id}/cancel` | `PATIENT` or `DOCTOR` | Cancel own appointment |
 
-Send the token as `Authorization: Bearer <token>`.
+### Donations (iteration 3)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/donations` | public | Start a donation; returns a Stripe Checkout `checkoutUrl`. Anonymous, or attributed if a token is sent |
+| `POST` | `/api/donations/webhook` | public | Stripe webhook (verified by signature); finalises the donation |
+| `GET`  | `/api/donations/me` | JWT | Caller's donation history |
+| `GET`  | `/api/donations/config` | public | Card availability, currency, minimum amount, and Patreon link |
+
+Amounts are in the currency's **minor units** (e.g. cents). Send the token as
+`Authorization: Bearer <token>`.
