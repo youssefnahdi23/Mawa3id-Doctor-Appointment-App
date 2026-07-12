@@ -135,6 +135,38 @@ class DoctorIntegrationTest {
     }
 
     @Test
+    void doctorCanSetSlotDurationAndDefaultsTo30() throws Exception {
+        String token = registerDoctor("slotdur@example.com", "Dr Slot", cardiologyId);
+
+        // Newly registered doctor defaults to 30-minute slots.
+        mockMvc.perform(get("/api/doctors/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slotDurationMinutes").value(30));
+
+        String update = """
+                {"name":"Dr Slot","specialtyId":%d,"slotDurationMinutes":45}
+                """.formatted(cardiologyId);
+        mockMvc.perform(put("/api/doctors/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slotDurationMinutes").value(45));
+    }
+
+    @Test
+    void slotDurationOutOfRangeIsBadRequest() throws Exception {
+        String token = registerDoctor("slotbad@example.com", "Dr Slot", cardiologyId);
+        String update = """
+                {"name":"Dr Slot","specialtyId":%d,"slotDurationMinutes":1}
+                """.formatted(cardiologyId);
+        mockMvc.perform(put("/api/doctors/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.slotDurationMinutes").isNotEmpty());
+    }
+
+    @Test
     void combinedSpecialtyAndNameFilterReturnsIntersection() throws Exception {
         registerDoctor("heart1@example.com", "Alice Heart", cardiologyId);
         registerDoctor("heart2@example.com", "Bob Heart", cardiologyId);

@@ -1,6 +1,8 @@
 package com.mawa3id.doctor.dto;
 
 import com.mawa3id.doctor.AcceptanceMode;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -11,6 +13,7 @@ public record DoctorUpdateRequest(
         @Size(max = 500) String workingHours,
         @Size(max = 40) String phone,
         @Size(max = 1000) String bio,
-        AcceptanceMode acceptanceMode
+        AcceptanceMode acceptanceMode,
+        @Min(5) @Max(240) Integer slotDurationMinutes
 ) {
 }

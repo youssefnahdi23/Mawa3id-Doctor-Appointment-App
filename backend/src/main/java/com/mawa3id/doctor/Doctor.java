@@ -50,6 +50,9 @@ public class Doctor {
     @Column(name = "acceptance_mode", nullable = false, length = 20)
     private AcceptanceMode acceptanceMode = AcceptanceMode.MANUAL;
 
+    @Column(name = "slot_duration_minutes", nullable = false)
+    private int slotDurationMinutes = 30;
+
     protected Doctor() {
     }
 
@@ -125,5 +128,13 @@ public class Doctor {
 
     public void setAcceptanceMode(AcceptanceMode acceptanceMode) {
         this.acceptanceMode = acceptanceMode;
+    }
+
+    public int getSlotDurationMinutes() {
+        return slotDurationMinutes;
+    }
+
+    public void setSlotDurationMinutes(int slotDurationMinutes) {
+        this.slotDurationMinutes = slotDurationMinutes;
     }
 }

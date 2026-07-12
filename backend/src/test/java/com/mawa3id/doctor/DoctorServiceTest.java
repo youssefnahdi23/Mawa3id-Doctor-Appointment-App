@@ -91,12 +91,14 @@ class DoctorServiceTest {
         when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
 
         Doctor result = doctorService.update(1L, new DoctorUpdateRequest(
-                "Dr After", null, "New Clinic", "8-16", "+212600", "bio", null));
+                "Dr After", null, "New Clinic", "8-16", "+212600", "bio", null, null));
 
         assertThat(result.getName()).isEqualTo("Dr After");
         assertThat(result.getSpecialty()).isSameAs(original);
         // acceptanceMode null -> unchanged from the entity default (MANUAL).
         assertThat(result.getAcceptanceMode()).isEqualTo(AcceptanceMode.MANUAL);
+        // slotDurationMinutes null -> unchanged from the entity default (30).
+        assertThat(result.getSlotDurationMinutes()).isEqualTo(30);
     }
 
     @Test
@@ -107,10 +109,11 @@ class DoctorServiceTest {
         when(specialtyRepository.findById(9L)).thenReturn(Optional.of(derma));
 
         Doctor result = doctorService.update(1L, new DoctorUpdateRequest(
-                "Dr After", 9L, "New Clinic", "8-16", "+212600", "bio", AcceptanceMode.AUTO));
+                "Dr After", 9L, "New Clinic", "8-16", "+212600", "bio", AcceptanceMode.AUTO, 45));
 
         assertThat(result.getSpecialty()).isSameAs(derma);
         assertThat(result.getAcceptanceMode()).isEqualTo(AcceptanceMode.AUTO);
+        assertThat(result.getSlotDurationMinutes()).isEqualTo(45);
     }
 
     @Test
@@ -120,7 +123,7 @@ class DoctorServiceTest {
         when(specialtyRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> doctorService.update(1L, new DoctorUpdateRequest(
-                "Dr After", 999L, null, null, null, null, null)))
+                "Dr After", 999L, null, null, null, null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

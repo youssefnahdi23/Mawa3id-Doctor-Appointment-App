@@ -46,6 +46,9 @@ public class DoctorService {
         if (request.acceptanceMode() != null) {
             doctor.setAcceptanceMode(request.acceptanceMode());
         }
+        if (request.slotDurationMinutes() != null) {
+            doctor.setSlotDurationMinutes(request.slotDurationMinutes());
+        }
         if (request.specialtyId() != null) {
             doctor.setSpecialty(resolveSpecialty(request.specialtyId()));
         }
