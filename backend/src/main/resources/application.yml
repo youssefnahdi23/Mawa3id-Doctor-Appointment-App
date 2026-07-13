@@ -59,6 +59,13 @@ mawa3id:
       webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
       success-url: ${STRIPE_SUCCESS_URL:http://localhost:8080/donation/success}
       cancel-url: ${STRIPE_CANCEL_URL:http://localhost:8080/donation/cancel}
+  notifications:
+    reminder:
+      # Scheduled job that reminds both parties of upcoming ACCEPTED appointments. The scan
+      # is idempotent per appointment. Disable it (or widen the window) via env vars.
+      enabled: ${NOTIFICATIONS_REMINDER_ENABLED:true}
+      window-hours: ${NOTIFICATIONS_REMINDER_WINDOW_HOURS:24}
+      cron: ${NOTIFICATIONS_REMINDER_CRON:0 0 * * * *}
 
 springdoc:
   swagger-ui:

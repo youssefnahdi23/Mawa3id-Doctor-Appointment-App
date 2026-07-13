@@ -62,6 +62,9 @@ environment.
 | `STRIPE_WEBHOOK_SECRET` | _(empty)_ | Stripe webhook signing secret, verifies `POST /api/donations/webhook` |
 | `STRIPE_SUCCESS_URL` | `.../donation/success` | redirect after a successful checkout |
 | `STRIPE_CANCEL_URL` | `.../donation/cancel` | redirect after a cancelled checkout |
+| `NOTIFICATIONS_REMINDER_ENABLED` | `true` | enable the scheduled appointment-reminder job |
+| `NOTIFICATIONS_REMINDER_WINDOW_HOURS` | `24` | how far ahead an `ACCEPTED` appointment is reminded about |
+| `NOTIFICATIONS_REMINDER_CRON` | `0 0 * * * *` | reminder job schedule (Spring cron; default hourly) |
 | `SERVER_PORT` | `8080` | HTTP port |
 
 ### Operational endpoints
@@ -104,6 +107,8 @@ medical_records(id, appointment_id→appointments UNIQUE, diagnosis, notes,
           prescription, follow_up_date, created_at, updated_at)
 reviews(id, appointment_id→appointments UNIQUE, rating, comment,
           created_at, updated_at)
+notifications(id, user_id→users, type, message, appointment_id→appointments NULLABLE,
+          read_at NULLABLE, created_at)
 ```
 
 ### Donation lifecycle
@@ -133,6 +138,18 @@ via `POST /api/appointments/{id}/review` — one per completed appointment (a du
 which surface on `GET /api/doctors` and `GET /api/doctors/{id}`. Reviews are publicly
 listed per doctor at `GET /api/doctors/{id}/reviews` (paginated, newest first); the patient
 reads their own at `GET /api/reviews/me`.
+
+### Notifications & reminders (iteration 6)
+
+Each appointment lifecycle transition emits an in-app **notification** to the affected user,
+persisted in the same transaction as the state change (booking → doctor; accept/reject/complete
+→ patient; cancel → the other party). A `@Scheduled` job (`NotificationScheduler`) calls
+`NotificationService.dispatchDueReminders(...)` to remind both parties of `ACCEPTED`
+appointments starting within `mawa3id.notifications.reminder.window-hours`; the scan is
+idempotent per appointment. Users read their feed at `GET /api/notifications`
+(paginated, `unread` filter), see `GET /api/notifications/unread-count`, and mark items read
+with `PUT /api/notifications/{id}/read` / `PUT /api/notifications/read-all`. The reminder job is
+disabled in the test profile so the suite drives `dispatchDueReminders` deterministically.
 
 ## Example flow
 

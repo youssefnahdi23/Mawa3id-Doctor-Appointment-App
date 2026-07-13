@@ -35,6 +35,7 @@ class AppointmentServiceTest {
     @Mock private ScheduleService scheduleService;
     @Mock private DoctorService doctorService;
     @Mock private PatientService patientService;
+    @Mock private com.mawa3id.notification.NotificationService notificationService;
 
     @InjectMocks private AppointmentService appointmentService;
 

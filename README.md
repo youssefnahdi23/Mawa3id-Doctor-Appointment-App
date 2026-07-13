@@ -16,7 +16,8 @@ support development via donations (bank card / Patreon).
 | 3 | Donations (card via Stripe + Patreon link) | ✅ Done |
 | 4 | Medical records: doctors complete visits and attach visit notes; patients read their history | ✅ Done |
 | 5 | Reviews & ratings: patients rate doctors after a completed visit; aggregate rating on browse/detail | ✅ Done |
-| 6 | Flutter mobile app | ⏳ Planned |
+| 6 | Notifications & reminders: in-app feed for lifecycle events + scheduled upcoming-appointment reminders | ✅ Done |
+| 7 | Flutter mobile app | ⏳ Planned |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
 computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
@@ -131,3 +132,21 @@ count** are then surfaced on `GET /api/doctors` (browse) and `GET /api/doctors/{
 | `GET`  | `/api/appointments/{id}/review` | `DOCTOR` or `PATIENT` | Read the review (owner of that appointment only) |
 | `GET`  | `/api/doctors/{id}/reviews?page=&size=` | public | A doctor's reviews, newest first |
 | `GET`  | `/api/reviews/me` | `PATIENT` | Caller's own reviews |
+
+### Notifications & reminders (iteration 6)
+
+Appointment lifecycle transitions generate **in-app notifications** for the affected party
+(booking → doctor; accept/reject/complete → patient; cancel → the other party). A scheduled
+job also emits **reminders** to both parties for `ACCEPTED` appointments starting within a
+configurable window (default 24h; idempotent per appointment). The API is read + mark-read only.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/api/notifications?unread=&page=&size=` | JWT | Caller's notifications, newest first; optional `unread=true` |
+| `GET`  | `/api/notifications/unread-count` | JWT | `{ "count": N }` of unread notifications |
+| `PUT`  | `/api/notifications/{id}/read` | JWT | Mark one read (owner only) |
+| `PUT`  | `/api/notifications/read-all` | JWT | Mark all caller's notifications read |
+
+Reminder settings: `NOTIFICATIONS_REMINDER_ENABLED` (default `true`),
+`NOTIFICATIONS_REMINDER_WINDOW_HOURS` (default `24`), `NOTIFICATIONS_REMINDER_CRON`
+(default hourly).
