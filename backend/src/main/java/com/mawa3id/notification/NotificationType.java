@@ -1,0 +1,10 @@
+package com.mawa3id.notification;
+
+public enum NotificationType {
+    APPOINTMENT_BOOKED,
+    APPOINTMENT_ACCEPTED,
+    APPOINTMENT_REJECTED,
+    APPOINTMENT_CANCELLED,
+    APPOINTMENT_COMPLETED,
+    APPOINTMENT_REMINDER
+}

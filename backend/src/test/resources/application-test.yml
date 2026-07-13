@@ -28,3 +28,8 @@ mawa3id:
     # Card donations exercised via StubPaymentGateway (test profile). A Patreon URL is
     # set so the /api/donations/config test asserts a concrete value.
     patreon-url: https://patreon.com/mawa3id-test
+  notifications:
+    reminder:
+      # Off so the scheduled job never fires mid-test; reminder logic is driven directly
+      # via NotificationService.dispatchDueReminders(...) for deterministic assertions.
+      enabled: false
