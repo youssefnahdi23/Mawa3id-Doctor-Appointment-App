@@ -148,6 +148,40 @@ class AppointmentIntegrationTest {
         book(patient, doctor.id(), slotNine).andExpect(status().isCreated());
     }
 
+    @Test
+    void doctorCompletesAcceptedAppointment() throws Exception {
+        Doctor doctor = registerDoctor("complete-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("complete-pat@example.com");
+
+        MvcResult booked = book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn();
+        long id = objectMapper.readTree(booked.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(put("/api/appointments/{id}/complete", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        // Completing again (now COMPLETED, not ACCEPTED) is a conflict.
+        mockMvc.perform(put("/api/appointments/{id}/complete", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void completingPendingAppointmentIsConflict() throws Exception {
+        Doctor doctor = registerDoctor("complete-pend-doc@example.com", false);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("complete-pend-pat@example.com");
+
+        MvcResult booked = book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn();
+        long id = objectMapper.readTree(booked.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(put("/api/appointments/{id}/complete", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(status().isConflict());
+    }
+
     // ---- helpers ----
 
     private org.springframework.test.web.servlet.ResultActions book(String token, long doctorId, String start)

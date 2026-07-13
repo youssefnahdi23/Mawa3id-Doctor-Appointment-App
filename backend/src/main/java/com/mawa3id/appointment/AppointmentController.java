@@ -66,6 +66,13 @@ public class AppointmentController {
         return appointmentService.reject(principal.getUserId(), id);
     }
 
+    @PutMapping("/{id}/complete")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public AppointmentResponse complete(@AuthenticationPrincipal AppUserDetails principal,
+                                        @PathVariable Long id) {
+        return appointmentService.complete(principal.getUserId(), id);
+    }
+
     @PutMapping("/{id}/cancel")
     public AppointmentResponse cancel(@AuthenticationPrincipal AppUserDetails principal,
                                       @PathVariable Long id) {
