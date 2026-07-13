@@ -85,6 +85,17 @@ environment.
   "now" comparisons (slot computation, bookability, reminders), removing the dependency on the
   JVM default zone. Times are still stored as `LocalDateTime` (single-region assumption).
 
+## Container image
+
+A multi-stage [`Dockerfile`](Dockerfile) builds an executable-jar image on
+`eclipse-temurin:21-jre` (non-root, with an `/actuator/health` `HEALTHCHECK`). The image runs
+Flyway migrations (`V1`–`V7`) on startup against the configured PostgreSQL — the app boots with
+`spring.jpa.hibernate.ddl-auto=validate`, so a schema/entity mismatch fails fast.
+
+Build/run the whole stack (app + PostgreSQL) from the repo root with
+`docker compose up --build` (see the root README). CI builds this image on every push so the
+Dockerfile can't silently break.
+
 ## Testing
 
 ```bash

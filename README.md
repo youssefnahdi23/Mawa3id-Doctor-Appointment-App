@@ -18,7 +18,8 @@ support development via donations (bank card / Patreon).
 | 5 | Reviews & ratings: patients rate doctors after a completed visit; aggregate rating on browse/detail | ✅ Done |
 | 6 | Notifications & reminders: in-app feed for lifecycle events + scheduled upcoming-appointment reminders | ✅ Done |
 | 7 | Hardening: pagination on all list endpoints + explicit configurable clinic timezone | ✅ Done |
-| 8 | Flutter mobile app | ⏳ Planned |
+| 8 | Deployment: Docker image + docker-compose (Postgres) + CI image build | ✅ Done |
+| 9 | Flutter mobile app | ⏳ Planned |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
 computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
@@ -34,7 +35,20 @@ List endpoints are paginated and return a Spring `Page` (`{ "content": [...], "p
 
 Spring Boot REST API. See [`backend/README.md`](backend/README.md) for full details.
 
-### Quick start
+### Quick start (Docker)
+
+Requires only Docker. Brings up the API **and** PostgreSQL together; Flyway migrations
+apply on boot.
+
+```bash
+cp .env.example .env      # then set DB_PASSWORD and JWT_SECRET
+docker compose up --build
+```
+
+The API is on `http://localhost:8080` (Swagger at `/swagger-ui.html`, health at
+`/actuator/health`). Stop with `docker compose down` (add `-v` to also drop the DB volume).
+
+### Quick start (local JDK)
 
 Requires JDK 21, Maven, and PostgreSQL.
 
