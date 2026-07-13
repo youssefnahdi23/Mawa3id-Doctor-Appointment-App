@@ -69,7 +69,7 @@ class MedicalRecordIntegrationTest {
         // Appointment is now COMPLETED.
         mockMvc.perform(get("/api/appointments/me").header("Authorization", "Bearer " + patient))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("COMPLETED"));
+                .andExpect(jsonPath("$.content[0].status").value("COMPLETED"));
 
         // Both parties can read the record.
         mockMvc.perform(get("/api/appointments/{id}/record", appointmentId)
@@ -84,8 +84,8 @@ class MedicalRecordIntegrationTest {
         // Patient visit history lists the record.
         mockMvc.perform(get("/api/records/me").header("Authorization", "Bearer " + patient))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].diagnosis").value("Flu"));
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].diagnosis").value("Flu"));
     }
 
     @Test

@@ -15,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
@@ -24,6 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -194,10 +197,10 @@ class ReviewServiceTest {
     @Test
     void listForPatientMapsToResponses() {
         Appointment appt = appointment(PATIENT_ID, AppointmentStatus.COMPLETED);
-        when(reviewRepository.findByAppointmentPatientUserIdOrderByCreatedAtDesc(PATIENT_ID))
-                .thenReturn(List.of(review(appt)));
+        when(reviewRepository.findByAppointmentPatientUserIdOrderByCreatedAtDesc(eq(PATIENT_ID), any()))
+                .thenReturn(new PageImpl<>(List.of(review(appt))));
 
-        assertThat(reviewService.listForPatient(PATIENT_ID)).singleElement()
+        assertThat(reviewService.listForPatient(PATIENT_ID, PageRequest.of(0, 20))).singleElement()
                 .satisfies(r -> assertThat(r.rating()).isEqualTo(5));
     }
 }

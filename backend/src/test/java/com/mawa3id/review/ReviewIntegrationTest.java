@@ -89,7 +89,7 @@ class ReviewIntegrationTest {
         // Patient sees the review in their own history.
         mockMvc.perform(get("/api/reviews/me").header("Authorization", "Bearer " + patient))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.page.totalElements").value(1));
     }
 
     @Test

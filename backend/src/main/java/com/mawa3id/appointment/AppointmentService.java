@@ -11,12 +11,13 @@ import com.mawa3id.notification.NotificationType;
 import com.mawa3id.patient.Patient;
 import com.mawa3id.patient.PatientService;
 import com.mawa3id.schedule.ScheduleService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class AppointmentService {
@@ -133,19 +134,19 @@ public class AppointmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> listForPatient(Long patientUserId, AppointmentStatus status) {
-        List<Appointment> appointments = status == null
-                ? appointmentRepository.findByPatientUserIdOrderByStartTimeDesc(patientUserId)
-                : appointmentRepository.findByPatientUserIdAndStatusOrderByStartTimeDesc(patientUserId, status);
-        return appointments.stream().map(AppointmentResponse::from).toList();
+    public Page<AppointmentResponse> listForPatient(Long patientUserId, AppointmentStatus status, Pageable pageable) {
+        Page<Appointment> appointments = status == null
+                ? appointmentRepository.findByPatientUserIdOrderByStartTimeDesc(patientUserId, pageable)
+                : appointmentRepository.findByPatientUserIdAndStatusOrderByStartTimeDesc(patientUserId, status, pageable);
+        return appointments.map(AppointmentResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> listForDoctor(Long doctorUserId, AppointmentStatus status) {
-        List<Appointment> appointments = status == null
-                ? appointmentRepository.findByDoctorUserIdOrderByStartTimeAsc(doctorUserId)
-                : appointmentRepository.findByDoctorUserIdAndStatusOrderByStartTimeAsc(doctorUserId, status);
-        return appointments.stream().map(AppointmentResponse::from).toList();
+    public Page<AppointmentResponse> listForDoctor(Long doctorUserId, AppointmentStatus status, Pageable pageable) {
+        Page<Appointment> appointments = status == null
+                ? appointmentRepository.findByDoctorUserIdOrderByStartTimeAsc(doctorUserId, pageable)
+                : appointmentRepository.findByDoctorUserIdAndStatusOrderByStartTimeAsc(doctorUserId, status, pageable);
+        return appointments.map(AppointmentResponse::from);
     }
 
     private Appointment getOwnedByDoctor(Long appointmentId, Long doctorUserId) {

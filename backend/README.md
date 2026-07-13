@@ -62,6 +62,7 @@ environment.
 | `STRIPE_WEBHOOK_SECRET` | _(empty)_ | Stripe webhook signing secret, verifies `POST /api/donations/webhook` |
 | `STRIPE_SUCCESS_URL` | `.../donation/success` | redirect after a successful checkout |
 | `STRIPE_CANCEL_URL` | `.../donation/cancel` | redirect after a cancelled checkout |
+| `CLINIC_ZONE` | `UTC` | IANA clinic time zone; all "now" comparisons (slots, bookability, reminders) use it |
 | `NOTIFICATIONS_REMINDER_ENABLED` | `true` | enable the scheduled appointment-reminder job |
 | `NOTIFICATIONS_REMINDER_WINDOW_HOURS` | `24` | how far ahead an `ACCEPTED` appointment is reminded about |
 | `NOTIFICATIONS_REMINDER_CRON` | `0 0 * * * *` | reminder job schedule (Spring cron; default hourly) |
@@ -78,6 +79,22 @@ environment.
   deployment; use a shared store if scaling horizontally.
 - **Consistent errors:** malformed JSON, bad path/param types, unsupported methods,
   and unknown routes return structured `4xx` `ApiError` bodies (not `500`).
+- **Pagination:** every list endpoint returns a Spring `Page` with `page`/`size` params
+  (`size` clamped to 100), so responses stay bounded as data grows.
+- **Explicit clinic timezone:** a single injected `Clock` bound to `CLINIC_ZONE` drives all
+  "now" comparisons (slot computation, bookability, reminders), removing the dependency on the
+  JVM default zone. Times are still stored as `LocalDateTime` (single-region assumption).
+
+## Container image
+
+A multi-stage [`Dockerfile`](Dockerfile) builds an executable-jar image on
+`eclipse-temurin:21-jre` (non-root, with an `/actuator/health` `HEALTHCHECK`). The image runs
+Flyway migrations (`V1`–`V7`) on startup against the configured PostgreSQL — the app boots with
+`spring.jpa.hibernate.ddl-auto=validate`, so a schema/entity mismatch fails fast.
+
+Build/run the whole stack (app + PostgreSQL) from the repo root with
+`docker compose up --build` (see the root README). CI builds this image on every push so the
+Dockerfile can't silently break.
 
 ## Testing
 

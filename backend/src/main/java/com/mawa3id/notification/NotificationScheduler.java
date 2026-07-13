@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
@@ -19,10 +20,13 @@ public class NotificationScheduler {
 
     private final NotificationService notificationService;
     private final NotificationProperties properties;
+    private final Clock clock;
 
-    public NotificationScheduler(NotificationService notificationService, NotificationProperties properties) {
+    public NotificationScheduler(NotificationService notificationService, NotificationProperties properties,
+                                 Clock clock) {
         this.notificationService = notificationService;
         this.properties = properties;
+        this.clock = clock;
     }
 
     @Scheduled(cron = "${mawa3id.notifications.reminder.cron:0 0 * * * *}")
@@ -30,7 +34,7 @@ public class NotificationScheduler {
         if (!properties.getReminder().isEnabled()) {
             return;
         }
-        int sent = notificationService.dispatchDueReminders(LocalDateTime.now());
+        int sent = notificationService.dispatchDueReminders(LocalDateTime.now(clock));
         if (sent > 0) {
             log.info("Dispatched {} appointment reminder notification(s)", sent);
         }

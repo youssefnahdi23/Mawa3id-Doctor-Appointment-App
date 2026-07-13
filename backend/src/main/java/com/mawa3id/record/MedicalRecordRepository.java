@@ -1,8 +1,9 @@
 package com.mawa3id.record;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, Long> {
@@ -11,5 +12,6 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, Lo
 
     boolean existsByAppointmentId(Long appointmentId);
 
-    List<MedicalRecord> findByAppointmentPatientUserIdOrderByAppointmentStartTimeDesc(Long patientUserId);
+    Page<MedicalRecord> findByAppointmentPatientUserIdOrderByAppointmentStartTimeDesc(
+            Long patientUserId, Pageable pageable);
 }

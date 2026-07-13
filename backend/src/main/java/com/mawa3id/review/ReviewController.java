@@ -19,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 public class ReviewController {
 
@@ -68,7 +66,11 @@ public class ReviewController {
 
     @GetMapping("/api/reviews/me")
     @PreAuthorize("hasRole('PATIENT')")
-    public List<ReviewResponse> mine(@AuthenticationPrincipal AppUserDetails principal) {
-        return reviewService.listForPatient(principal.getUserId());
+    public Page<ReviewResponse> mine(@AuthenticationPrincipal AppUserDetails principal,
+                                     @RequestParam(defaultValue = "0") int page,
+                                     @RequestParam(defaultValue = "20") int size) {
+        // Ordering is defined by the repository method (…OrderByCreatedAtDesc).
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE));
+        return reviewService.listForPatient(principal.getUserId(), pageable);
     }
 }

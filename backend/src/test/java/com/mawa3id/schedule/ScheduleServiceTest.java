@@ -10,12 +10,13 @@ import com.mawa3id.schedule.dto.SlotResponse;
 import com.mawa3id.specialty.Specialty;
 import com.mawa3id.user.Role;
 import com.mawa3id.user.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -38,8 +39,14 @@ class ScheduleServiceTest {
     @Mock
     private DoctorService doctorService;
 
-    @InjectMocks
     private ScheduleService scheduleService;
+
+    @BeforeEach
+    void setUp() {
+        // Real system-zone clock so "now" matches the LocalDate.now()-based test fixtures.
+        scheduleService = new ScheduleService(availabilityRepository, appointmentRepository, doctorService,
+                Clock.systemDefaultZone());
+    }
 
     private void noBookings() {
         when(appointmentRepository.findByDoctorUserIdAndStatusInAndStartTimeBetween(

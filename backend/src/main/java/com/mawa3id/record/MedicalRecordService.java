@@ -7,11 +7,11 @@ import com.mawa3id.common.ApiException;
 import com.mawa3id.common.ResourceNotFoundException;
 import com.mawa3id.record.dto.MedicalRecordResponse;
 import com.mawa3id.record.dto.RecordRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class MedicalRecordService {
@@ -75,10 +75,10 @@ public class MedicalRecordService {
     }
 
     @Transactional(readOnly = true)
-    public List<MedicalRecordResponse> listForPatient(Long patientUserId) {
+    public Page<MedicalRecordResponse> listForPatient(Long patientUserId, Pageable pageable) {
         return recordRepository
-                .findByAppointmentPatientUserIdOrderByAppointmentStartTimeDesc(patientUserId)
-                .stream().map(MedicalRecordResponse::from).toList();
+                .findByAppointmentPatientUserIdOrderByAppointmentStartTimeDesc(patientUserId, pageable)
+                .map(MedicalRecordResponse::from);
     }
 
     private MedicalRecord getRecord(Long appointmentId) {
