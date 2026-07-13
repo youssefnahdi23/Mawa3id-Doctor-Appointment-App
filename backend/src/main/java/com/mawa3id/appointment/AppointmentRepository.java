@@ -1,5 +1,7 @@
 package com.mawa3id.appointment;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -15,15 +17,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             Long doctorUserId, Collection<AppointmentStatus> statuses,
             LocalDateTime from, LocalDateTime to);
 
-    List<Appointment> findByPatientUserIdOrderByStartTimeDesc(Long patientUserId);
+    Page<Appointment> findByPatientUserIdOrderByStartTimeDesc(Long patientUserId, Pageable pageable);
 
-    List<Appointment> findByPatientUserIdAndStatusOrderByStartTimeDesc(
-            Long patientUserId, AppointmentStatus status);
+    Page<Appointment> findByPatientUserIdAndStatusOrderByStartTimeDesc(
+            Long patientUserId, AppointmentStatus status, Pageable pageable);
 
-    List<Appointment> findByDoctorUserIdOrderByStartTimeAsc(Long doctorUserId);
+    Page<Appointment> findByDoctorUserIdOrderByStartTimeAsc(Long doctorUserId, Pageable pageable);
 
-    List<Appointment> findByDoctorUserIdAndStatusOrderByStartTimeAsc(
-            Long doctorUserId, AppointmentStatus status);
+    Page<Appointment> findByDoctorUserIdAndStatusOrderByStartTimeAsc(
+            Long doctorUserId, AppointmentStatus status, Pageable pageable);
 
     List<Appointment> findByStatusAndStartTimeBetween(
             AppointmentStatus status, LocalDateTime from, LocalDateTime to);

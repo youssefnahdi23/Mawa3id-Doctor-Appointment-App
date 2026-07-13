@@ -4,6 +4,9 @@ import com.mawa3id.appointment.dto.AppointmentResponse;
 import com.mawa3id.appointment.dto.BookAppointmentRequest;
 import com.mawa3id.security.AppUserDetails;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,11 +20,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/appointments")
 public class AppointmentController {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final AppointmentService appointmentService;
 
@@ -40,16 +43,25 @@ public class AppointmentController {
 
     @GetMapping("/me")
     @PreAuthorize("hasRole('PATIENT')")
-    public List<AppointmentResponse> mine(@AuthenticationPrincipal AppUserDetails principal,
-                                          @RequestParam(required = false) AppointmentStatus status) {
-        return appointmentService.listForPatient(principal.getUserId(), status);
+    public Page<AppointmentResponse> mine(@AuthenticationPrincipal AppUserDetails principal,
+                                          @RequestParam(required = false) AppointmentStatus status,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "20") int size) {
+        return appointmentService.listForPatient(principal.getUserId(), status, pageable(page, size));
     }
 
     @GetMapping
     @PreAuthorize("hasRole('DOCTOR')")
-    public List<AppointmentResponse> queue(@AuthenticationPrincipal AppUserDetails principal,
-                                           @RequestParam(required = false) AppointmentStatus status) {
-        return appointmentService.listForDoctor(principal.getUserId(), status);
+    public Page<AppointmentResponse> queue(@AuthenticationPrincipal AppUserDetails principal,
+                                           @RequestParam(required = false) AppointmentStatus status,
+                                           @RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "20") int size) {
+        return appointmentService.listForDoctor(principal.getUserId(), status, pageable(page, size));
+    }
+
+    private static Pageable pageable(int page, int size) {
+        // Ordering is defined by the repository methods (…OrderByStartTime…).
+        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE));
     }
 
     @PutMapping("/{id}/accept")

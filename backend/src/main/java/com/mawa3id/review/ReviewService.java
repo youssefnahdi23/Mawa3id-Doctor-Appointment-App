@@ -14,8 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 public class ReviewService {
 
@@ -76,9 +74,9 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewResponse> listForPatient(Long patientUserId) {
-        return reviewRepository.findByAppointmentPatientUserIdOrderByCreatedAtDesc(patientUserId)
-                .stream().map(ReviewResponse::from).toList();
+    public Page<ReviewResponse> listForPatient(Long patientUserId, Pageable pageable) {
+        return reviewRepository.findByAppointmentPatientUserIdOrderByCreatedAtDesc(patientUserId, pageable)
+                .map(ReviewResponse::from);
     }
 
     /** Refresh the doctor's denormalised rating aggregate from the reviews table. */

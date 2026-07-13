@@ -44,10 +44,29 @@ class AppointmentIntegrationTest {
     private Long specialtyId;
     private final LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
     private final String slotNine = LocalDateTime.of(nextMonday, java.time.LocalTime.of(9, 0)).toString();
+    private final String slotNineThirty = LocalDateTime.of(nextMonday, java.time.LocalTime.of(9, 30)).toString();
 
     @BeforeEach
     void seed() {
         specialtyId = specialtyRepository.save(new Specialty("Cardiology", "Heart")).getId();
+    }
+
+    @Test
+    void patientAppointmentListIsPaginated() throws Exception {
+        Doctor doctor = registerDoctor("page-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("page-pat@example.com");
+
+        book(patient, doctor.id(), slotNine).andExpect(status().isCreated());
+        book(patient, doctor.id(), slotNineThirty).andExpect(status().isCreated());
+
+        // size=1 returns a single element but reports the true total.
+        mockMvc.perform(get("/api/appointments/me").param("size", "1")
+                        .header("Authorization", "Bearer " + patient))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.page.size").value(1));
     }
 
     @Test
@@ -66,8 +85,8 @@ class AppointmentIntegrationTest {
         // Doctor sees it in the queue
         mockMvc.perform(get("/api/appointments").header("Authorization", "Bearer " + doctor.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].status").value("PENDING"));
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("PENDING"));
 
         // Doctor accepts
         mockMvc.perform(put("/api/appointments/{id}/accept", appointmentId)
@@ -78,7 +97,7 @@ class AppointmentIntegrationTest {
         // Patient sees the accepted appointment
         mockMvc.perform(get("/api/appointments/me").header("Authorization", "Bearer " + patient))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("ACCEPTED"));
+                .andExpect(jsonPath("$.content[0].status").value("ACCEPTED"));
     }
 
     @Test

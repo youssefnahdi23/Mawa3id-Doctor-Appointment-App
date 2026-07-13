@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,7 +28,8 @@ import java.util.Set;
 
 /**
  * Computes bookable slots from a doctor's weekly availability and the doctor's
- * configured slot duration. Times are clinic-local (no timezone conversion).
+ * configured slot duration. Times are clinic-local; "now" is evaluated in the configured
+ * clinic zone ({@code mawa3id.clinic.zone}) via the injected {@link Clock}, not the JVM default.
  */
 @Service
 public class ScheduleService {
@@ -38,12 +40,15 @@ public class ScheduleService {
     private final DoctorAvailabilityRepository availabilityRepository;
     private final AppointmentRepository appointmentRepository;
     private final DoctorService doctorService;
+    private final Clock clock;
 
     public ScheduleService(DoctorAvailabilityRepository availabilityRepository,
-                           AppointmentRepository appointmentRepository, DoctorService doctorService) {
+                           AppointmentRepository appointmentRepository, DoctorService doctorService,
+                           Clock clock) {
         this.availabilityRepository = availabilityRepository;
         this.appointmentRepository = appointmentRepository;
         this.doctorService = doctorService;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +91,7 @@ public class ScheduleService {
         int slotMinutes = doctor.getSlotDurationMinutes();
         Map<DayOfWeek, List<DoctorAvailability>> rulesByDay = groupByDay(doctorUserId);
         Set<LocalDateTime> booked = bookedSlotStarts(doctorUserId, from, to);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         List<SlotResponse> slots = new ArrayList<>();
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
@@ -110,7 +115,7 @@ public class ScheduleService {
      */
     @Transactional(readOnly = true)
     public boolean isSlotBookable(Long doctorUserId, LocalDateTime startTime) {
-        if (startTime == null || !startTime.isAfter(LocalDateTime.now())) {
+        if (startTime == null || !startTime.isAfter(LocalDateTime.now(clock))) {
             return false;
         }
         Doctor doctor = doctorService.getByUserId(doctorUserId);

@@ -17,12 +17,18 @@ support development via donations (bank card / Patreon).
 | 4 | Medical records: doctors complete visits and attach visit notes; patients read their history | ✅ Done |
 | 5 | Reviews & ratings: patients rate doctors after a completed visit; aggregate rating on browse/detail | ✅ Done |
 | 6 | Notifications & reminders: in-app feed for lifecycle events + scheduled upcoming-appointment reminders | ✅ Done |
-| 7 | Flutter mobile app | ⏳ Planned |
+| 7 | Hardening: pagination on all list endpoints + explicit configurable clinic timezone | ✅ Done |
+| 8 | Flutter mobile app | ⏳ Planned |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
 computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
-`PENDING`, `AUTO` → `ACCEPTED`). Times are clinic-local (single-region; no timezone
-conversion yet).
+`PENDING`, `AUTO` → `ACCEPTED`). Times are clinic-local: a single configurable clinic zone
+(`CLINIC_ZONE`, default `UTC`) is used for every "now" comparison, so behaviour no longer
+depends on the server's default time zone.
+
+List endpoints are paginated and return a Spring `Page` (`{ "content": [...], "page": {
+"size", "number", "totalElements", "totalPages" } }`) with `page` (0-based) and `size`
+(max 100) query params.
 
 ## Backend
 
@@ -86,8 +92,8 @@ mvn test
 | `PUT`  | `/api/doctors/me/availability` | `DOCTOR` | Replace own weekly availability |
 | `GET`  | `/api/doctors/{id}/slots?from=&to=` | public | Computed free slots (range ≤ 31 days) |
 | `POST` | `/api/appointments` | `PATIENT` | Book a slot (`PENDING` or `ACCEPTED` per `acceptanceMode`) |
-| `GET`  | `/api/appointments/me?status=` | `PATIENT` | Patient's appointments |
-| `GET`  | `/api/appointments?status=` | `DOCTOR` | Doctor's appointment queue |
+| `GET`  | `/api/appointments/me?status=&page=&size=` | `PATIENT` | Patient's appointments (paginated) |
+| `GET`  | `/api/appointments?status=&page=&size=` | `DOCTOR` | Doctor's appointment queue (paginated) |
 | `PUT`  | `/api/appointments/{id}/accept`, `/reject` | `DOCTOR` | Accept / reject a pending appointment |
 | `PUT`  | `/api/appointments/{id}/cancel` | `PATIENT` or `DOCTOR` | Cancel own appointment |
 
@@ -116,7 +122,7 @@ appointment and browses their full visit history.
 | `POST` | `/api/appointments/{id}/record` | `DOCTOR` | Attach a visit record (appointment must be `ACCEPTED`/`COMPLETED`; auto-completes if accepted); `409` if one already exists |
 | `PUT`  | `/api/appointments/{id}/record` | `DOCTOR` | Update the record |
 | `GET`  | `/api/appointments/{id}/record` | `DOCTOR` or `PATIENT` | Read the record (owner of that appointment only) |
-| `GET`  | `/api/records/me` | `PATIENT` | Caller's visit history, newest first |
+| `GET`  | `/api/records/me?page=&size=` | `PATIENT` | Caller's visit history, newest first (paginated) |
 
 ### Reviews & ratings (iteration 5)
 
@@ -131,7 +137,7 @@ count** are then surfaced on `GET /api/doctors` (browse) and `GET /api/doctors/{
 | `PUT`  | `/api/appointments/{id}/review` | `PATIENT` | Update own rating/comment |
 | `GET`  | `/api/appointments/{id}/review` | `DOCTOR` or `PATIENT` | Read the review (owner of that appointment only) |
 | `GET`  | `/api/doctors/{id}/reviews?page=&size=` | public | A doctor's reviews, newest first |
-| `GET`  | `/api/reviews/me` | `PATIENT` | Caller's own reviews |
+| `GET`  | `/api/reviews/me?page=&size=` | `PATIENT` | Caller's own reviews (paginated) |
 
 ### Notifications & reminders (iteration 6)
 

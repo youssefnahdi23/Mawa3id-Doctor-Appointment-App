@@ -59,6 +59,11 @@ mawa3id:
       webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
       success-url: ${STRIPE_SUCCESS_URL:http://localhost:8080/donation/success}
       cancel-url: ${STRIPE_CANCEL_URL:http://localhost:8080/donation/cancel}
+  clinic:
+    # Single-region clinic time zone. All appointment times are clinic-local and every "now"
+    # comparison (slot computation, bookability, reminders) is evaluated in this zone rather
+    # than the JVM default. IANA zone id, e.g. Africa/Casablanca.
+    zone: ${CLINIC_ZONE:UTC}
   notifications:
     reminder:
       # Scheduled job that reminds both parties of upcoming ACCEPTED appointments. The scan

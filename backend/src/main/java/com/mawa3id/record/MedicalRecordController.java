@@ -4,6 +4,9 @@ import com.mawa3id.record.dto.MedicalRecordResponse;
 import com.mawa3id.record.dto.RecordRequest;
 import com.mawa3id.security.AppUserDetails;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,13 +15,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 public class MedicalRecordController {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final MedicalRecordService recordService;
 
@@ -52,7 +56,11 @@ public class MedicalRecordController {
 
     @GetMapping("/api/records/me")
     @PreAuthorize("hasRole('PATIENT')")
-    public List<MedicalRecordResponse> mine(@AuthenticationPrincipal AppUserDetails principal) {
-        return recordService.listForPatient(principal.getUserId());
+    public Page<MedicalRecordResponse> mine(@AuthenticationPrincipal AppUserDetails principal,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "20") int size) {
+        // Ordering is defined by the repository method (…OrderByAppointmentStartTimeDesc).
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE));
+        return recordService.listForPatient(principal.getUserId(), pageable);
     }
 }

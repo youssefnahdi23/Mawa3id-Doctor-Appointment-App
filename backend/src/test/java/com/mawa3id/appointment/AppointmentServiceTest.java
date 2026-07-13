@@ -14,6 +14,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
@@ -41,6 +45,7 @@ class AppointmentServiceTest {
 
     private static final long DOCTOR_ID = 2L;
     private static final long PATIENT_ID = 1L;
+    private static final Pageable PAGE = PageRequest.of(0, 20);
     private static final LocalDateTime START = LocalDateTime.now().plusDays(3).withHour(9).withMinute(0);
 
     private Doctor mockDoctor(AcceptanceMode mode) {
@@ -224,10 +229,10 @@ class AppointmentServiceTest {
     void listForPatientMapsToResponses() {
         Appointment appt = appointment(mockDoctor(AcceptanceMode.MANUAL), mockPatient(PATIENT_ID),
                 AppointmentStatus.PENDING);
-        when(appointmentRepository.findByPatientUserIdOrderByStartTimeDesc(PATIENT_ID))
-                .thenReturn(List.of(appt));
+        when(appointmentRepository.findByPatientUserIdOrderByStartTimeDesc(eq(PATIENT_ID), any()))
+                .thenReturn(new PageImpl<>(List.of(appt)));
 
-        List<AppointmentResponse> result = appointmentService.listForPatient(PATIENT_ID, null);
+        Page<AppointmentResponse> result = appointmentService.listForPatient(PATIENT_ID, null, PAGE);
 
         assertThat(result).singleElement()
                 .satisfies(r -> assertThat(r.status()).isEqualTo(AppointmentStatus.PENDING));
@@ -238,21 +243,21 @@ class AppointmentServiceTest {
         Appointment appt = appointment(mockDoctor(AcceptanceMode.MANUAL), mockPatient(PATIENT_ID),
                 AppointmentStatus.ACCEPTED);
         when(appointmentRepository.findByPatientUserIdAndStatusOrderByStartTimeDesc(
-                PATIENT_ID, AppointmentStatus.ACCEPTED)).thenReturn(List.of(appt));
+                eq(PATIENT_ID), eq(AppointmentStatus.ACCEPTED), any())).thenReturn(new PageImpl<>(List.of(appt)));
 
-        assertThat(appointmentService.listForPatient(PATIENT_ID, AppointmentStatus.ACCEPTED)).hasSize(1);
+        assertThat(appointmentService.listForPatient(PATIENT_ID, AppointmentStatus.ACCEPTED, PAGE)).hasSize(1);
     }
 
     @Test
     void listForDoctorAppliesStatusFilterAndDefaultsToAll() {
         Appointment appt = appointment(mockDoctor(AcceptanceMode.MANUAL), mockPatient(PATIENT_ID),
                 AppointmentStatus.PENDING);
-        when(appointmentRepository.findByDoctorUserIdOrderByStartTimeAsc(DOCTOR_ID))
-                .thenReturn(List.of(appt));
+        when(appointmentRepository.findByDoctorUserIdOrderByStartTimeAsc(eq(DOCTOR_ID), any()))
+                .thenReturn(new PageImpl<>(List.of(appt)));
         when(appointmentRepository.findByDoctorUserIdAndStatusOrderByStartTimeAsc(
-                DOCTOR_ID, AppointmentStatus.PENDING)).thenReturn(List.of(appt));
+                eq(DOCTOR_ID), eq(AppointmentStatus.PENDING), any())).thenReturn(new PageImpl<>(List.of(appt)));
 
-        assertThat(appointmentService.listForDoctor(DOCTOR_ID, null)).hasSize(1);
-        assertThat(appointmentService.listForDoctor(DOCTOR_ID, AppointmentStatus.PENDING)).hasSize(1);
+        assertThat(appointmentService.listForDoctor(DOCTOR_ID, null, PAGE)).hasSize(1);
+        assertThat(appointmentService.listForDoctor(DOCTOR_ID, AppointmentStatus.PENDING, PAGE)).hasSize(1);
     }
 }
