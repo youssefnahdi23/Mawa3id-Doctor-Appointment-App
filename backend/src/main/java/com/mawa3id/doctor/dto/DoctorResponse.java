@@ -14,7 +14,9 @@ public record DoctorResponse(
         String phone,
         String bio,
         AcceptanceMode acceptanceMode,
-        int slotDurationMinutes
+        int slotDurationMinutes,
+        double ratingAverage,
+        int ratingCount
 ) {
     public static DoctorResponse from(Doctor doctor) {
         return new DoctorResponse(
@@ -27,6 +29,8 @@ public record DoctorResponse(
                 doctor.getPhone(),
                 doctor.getBio(),
                 doctor.getAcceptanceMode(),
-                doctor.getSlotDurationMinutes());
+                doctor.getSlotDurationMinutes(),
+                doctor.getRatingAverage(),
+                doctor.getRatingCount());
     }
 }

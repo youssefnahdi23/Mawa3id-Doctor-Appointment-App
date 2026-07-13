@@ -9,13 +9,17 @@ public record DoctorSummary(
         Long userId,
         String name,
         String specialtyName,
-        String cabinetAddress
+        String cabinetAddress,
+        double ratingAverage,
+        int ratingCount
 ) {
     public static DoctorSummary from(Doctor doctor) {
         return new DoctorSummary(
                 doctor.getUserId(),
                 doctor.getName(),
                 doctor.getSpecialty() == null ? null : doctor.getSpecialty().getName(),
-                doctor.getCabinetAddress());
+                doctor.getCabinetAddress(),
+                doctor.getRatingAverage(),
+                doctor.getRatingCount());
     }
 }

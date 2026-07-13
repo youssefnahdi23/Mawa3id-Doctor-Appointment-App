@@ -96,12 +96,14 @@ users(id, email UNIQUE, password_hash, role, created_at)
 specialties(id, name UNIQUE, description)
 patients(user_id PK→users, full_name, date_of_birth, patient_code UNIQUE)
 doctors(user_id PK→users, name, specialty_id→specialties, cabinet_address,
-        working_hours, phone, bio, acceptance_mode)
+        working_hours, phone, bio, acceptance_mode, rating_count, rating_average)
 donations(id, user_id→users NULLABLE, amount_minor, currency, status, provider,
           provider_session_id UNIQUE, provider_payment_ref, donor_name, message,
           created_at, updated_at)
 medical_records(id, appointment_id→appointments UNIQUE, diagnosis, notes,
           prescription, follow_up_date, created_at, updated_at)
+reviews(id, appointment_id→appointments UNIQUE, rating, comment,
+          created_at, updated_at)
 ```
 
 ### Donation lifecycle
@@ -122,6 +124,15 @@ and `PUT /api/appointments/{id}/complete` closes a visit without notes. At most 
 exists per appointment (a duplicate is `409`). The linked appointment's doctor and patient
 may read it (`GET /api/appointments/{id}/record`); the patient's full history is at
 `GET /api/records/me`.
+
+### Reviews & ratings (iteration 5)
+
+After a `COMPLETED` visit, the patient submits a 1–5 star **review** (optional comment)
+via `POST /api/appointments/{id}/review` — one per completed appointment (a duplicate is
+`409`). Each write recomputes the doctor's denormalised `rating_count` / `rating_average`,
+which surface on `GET /api/doctors` and `GET /api/doctors/{id}`. Reviews are publicly
+listed per doctor at `GET /api/doctors/{id}/reviews` (paginated, newest first); the patient
+reads their own at `GET /api/reviews/me`.
 
 ## Example flow
 
