@@ -15,7 +15,8 @@ support development via donations (bank card / Patreon).
 | 2 | Appointments (RDV): weekly availability, computed slots, booking, manual/auto acceptance | ✅ Done |
 | 3 | Donations (card via Stripe + Patreon link) | ✅ Done |
 | 4 | Medical records: doctors complete visits and attach visit notes; patients read their history | ✅ Done |
-| 5 | Flutter mobile app | ⏳ Planned |
+| 5 | Reviews & ratings: patients rate doctors after a completed visit; aggregate rating on browse/detail | ✅ Done |
+| 6 | Flutter mobile app | ⏳ Planned |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
 computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
@@ -115,3 +116,18 @@ appointment and browses their full visit history.
 | `PUT`  | `/api/appointments/{id}/record` | `DOCTOR` | Update the record |
 | `GET`  | `/api/appointments/{id}/record` | `DOCTOR` or `PATIENT` | Read the record (owner of that appointment only) |
 | `GET`  | `/api/records/me` | `PATIENT` | Caller's visit history, newest first |
+
+### Reviews & ratings (iteration 5)
+
+After a **completed** visit, the patient leaves a **1–5 star rating** with an optional
+comment (one review per completed appointment). Each doctor's **average rating and review
+count** are then surfaced on `GET /api/doctors` (browse) and `GET /api/doctors/{id}`
+(detail), and the reviews themselves are publicly listable per doctor.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/appointments/{id}/review` | `PATIENT` | Leave a review (appointment must be `COMPLETED`); `409` if one already exists |
+| `PUT`  | `/api/appointments/{id}/review` | `PATIENT` | Update own rating/comment |
+| `GET`  | `/api/appointments/{id}/review` | `DOCTOR` or `PATIENT` | Read the review (owner of that appointment only) |
+| `GET`  | `/api/doctors/{id}/reviews?page=&size=` | public | A doctor's reviews, newest first |
+| `GET`  | `/api/reviews/me` | `PATIENT` | Caller's own reviews |

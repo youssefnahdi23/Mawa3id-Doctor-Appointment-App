@@ -53,6 +53,13 @@ public class Doctor {
     @Column(name = "slot_duration_minutes", nullable = false)
     private int slotDurationMinutes = 30;
 
+    /** Denormalised aggregate over this doctor's reviews; recomputed on each review write. */
+    @Column(name = "rating_count", nullable = false)
+    private int ratingCount = 0;
+
+    @Column(name = "rating_average", nullable = false)
+    private double ratingAverage = 0;
+
     protected Doctor() {
     }
 
@@ -136,5 +143,21 @@ public class Doctor {
 
     public void setSlotDurationMinutes(int slotDurationMinutes) {
         this.slotDurationMinutes = slotDurationMinutes;
+    }
+
+    public int getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(int ratingCount) {
+        this.ratingCount = ratingCount;
+    }
+
+    public double getRatingAverage() {
+        return ratingAverage;
+    }
+
+    public void setRatingAverage(double ratingAverage) {
+        this.ratingAverage = ratingAverage;
     }
 }
