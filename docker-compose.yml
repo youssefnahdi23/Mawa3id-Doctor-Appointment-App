@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-mawa3id}
       POSTGRES_USER: ${DB_USERNAME:-mawa3id}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-mawa3id}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env (see .env.example)}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +24,7 @@ services:
     environment:
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-mawa3id}
       DB_USERNAME: ${DB_USERNAME:-mawa3id}
-      DB_PASSWORD: ${DB_PASSWORD:-mawa3id}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env (see .env.example)}
       # Refuse to boot with a throwaway signing key in a real deployment.
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_FAIL_ON_MISSING_SECRET: ${JWT_FAIL_ON_MISSING_SECRET:-true}
