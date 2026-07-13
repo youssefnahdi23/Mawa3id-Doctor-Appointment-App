@@ -14,7 +14,8 @@ support development via donations (bank card / Patreon).
 | 1 | Backend foundation: JWT auth (doctors & patients), doctor profiles, specialties, browse/filter | ✅ Done |
 | 2 | Appointments (RDV): weekly availability, computed slots, booking, manual/auto acceptance | ✅ Done |
 | 3 | Donations (card via Stripe + Patreon link) | ✅ Done |
-| 4 | Flutter mobile app | ⏳ Planned |
+| 4 | Medical records: doctors complete visits and attach visit notes; patients read their history | ✅ Done |
+| 5 | Flutter mobile app | ⏳ Planned |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
 computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
@@ -99,3 +100,18 @@ mvn test
 
 Amounts are in the currency's **minor units** (e.g. cents). Send the token as
 `Authorization: Bearer <token>`.
+
+### Medical records (iteration 4)
+
+Doctors close out a visit and attach a **medical record** (diagnosis, notes, prescription,
+optional follow-up date). A record belongs to a completed visit — attaching one to an
+`ACCEPTED` appointment auto-completes it. The patient reads the record for their own
+appointment and browses their full visit history.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `PUT`  | `/api/appointments/{id}/complete` | `DOCTOR` | Mark an `ACCEPTED` appointment `COMPLETED` |
+| `POST` | `/api/appointments/{id}/record` | `DOCTOR` | Attach a visit record (appointment must be `ACCEPTED`/`COMPLETED`; auto-completes if accepted); `409` if one already exists |
+| `PUT`  | `/api/appointments/{id}/record` | `DOCTOR` | Update the record |
+| `GET`  | `/api/appointments/{id}/record` | `DOCTOR` or `PATIENT` | Read the record (owner of that appointment only) |
+| `GET`  | `/api/records/me` | `PATIENT` | Caller's visit history, newest first |

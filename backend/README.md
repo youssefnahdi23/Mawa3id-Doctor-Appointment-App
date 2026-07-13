@@ -100,6 +100,8 @@ doctors(user_id PK→users, name, specialty_id→specialties, cabinet_address,
 donations(id, user_id→users NULLABLE, amount_minor, currency, status, provider,
           provider_session_id UNIQUE, provider_payment_ref, donor_name, message,
           created_at, updated_at)
+medical_records(id, appointment_id→appointments UNIQUE, diagnosis, notes,
+          prescription, follow_up_date, created_at, updated_at)
 ```
 
 ### Donation lifecycle
@@ -110,6 +112,16 @@ caller when a JWT is present), opens a Stripe Checkout session, and returns its
 verified and the matching donation transitions to `SUCCEEDED` / `EXPIRED` / `FAILED`.
 Webhook handling is idempotent — unknown sessions and already-finalised donations are
 acknowledged with no change.
+
+### Medical records (iteration 4)
+
+A doctor closes out a visit and attaches a **medical record** (diagnosis, notes,
+prescription, optional follow-up date) via `POST /api/appointments/{id}/record`. Records
+belong to completed visits: attaching one to an `ACCEPTED` appointment auto-completes it,
+and `PUT /api/appointments/{id}/complete` closes a visit without notes. At most one record
+exists per appointment (a duplicate is `409`). The linked appointment's doctor and patient
+may read it (`GET /api/appointments/{id}/record`); the patient's full history is at
+`GET /api/records/me`.
 
 ## Example flow
 

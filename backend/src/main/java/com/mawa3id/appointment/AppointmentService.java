@@ -65,6 +65,18 @@ public class AppointmentService {
         return transition(doctorUserId, appointmentId, AppointmentStatus.REJECTED);
     }
 
+    /** Close out a visit: doctor-owned, only from ACCEPTED. */
+    @Transactional
+    public AppointmentResponse complete(Long doctorUserId, Long appointmentId) {
+        Appointment appointment = getOwnedByDoctor(appointmentId, doctorUserId);
+        if (appointment.getStatus() != AppointmentStatus.ACCEPTED) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Only an accepted appointment can be completed");
+        }
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        return AppointmentResponse.from(appointment);
+    }
+
     /** Accept/reject: doctor-owned, only from PENDING. */
     private AppointmentResponse transition(Long doctorUserId, Long appointmentId, AppointmentStatus target) {
         Appointment appointment = getOwnedByDoctor(appointmentId, doctorUserId);
