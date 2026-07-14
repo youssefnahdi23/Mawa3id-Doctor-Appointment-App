@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mawa3id/core/models/page_response.dart';
 import 'package:mawa3id/features/doctors/data/doctor_models.dart';
@@ -75,7 +76,8 @@ void main() {
     await tester.pumpAndSettle();
 
     stubList([_amal]);
-    await tester.tap(find.text('Cardiology'));
+    // 'Cardiology' also appears on doctor cards; target the chip explicitly.
+    await tester.tap(find.widgetWithText(FilterChip, 'Cardiology'));
     await tester.pumpAndSettle();
 
     verify(() =>
