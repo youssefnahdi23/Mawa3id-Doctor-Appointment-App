@@ -1,0 +1,7 @@
+tags:
+  # End-to-end flows against a running backend (docker compose up).
+  # Excluded in CI and by default locally:
+  #   flutter test --exclude-tags integration
+  # Run explicitly with:
+  #   flutter test --tags integration --dart-define=API_BASE_URL=http://localhost:8080
+  integration:

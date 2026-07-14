@@ -4,7 +4,7 @@ Mawa3id is a mobile app that connects **patients** and **doctors** for booking
 medical appointments (RDV). It is a **non-profit** project; users can optionally
 support development via donations (bank card / Patreon).
 
-- **Mobile:** Flutter (Android & iOS) — _future iteration_
+- **Mobile:** Flutter (Android & iOS) — _this repository's [`mobile/`](mobile/)_
 - **Backend:** Java 21, Spring Boot, PostgreSQL — _this repository's `backend/`_
 
 ## Roadmap
@@ -19,7 +19,7 @@ support development via donations (bank card / Patreon).
 | 6 | Notifications & reminders: in-app feed for lifecycle events + scheduled upcoming-appointment reminders | ✅ Done |
 | 7 | Hardening: pagination on all list endpoints + explicit configurable clinic timezone | ✅ Done |
 | 8 | Deployment: Docker image + docker-compose (Postgres) + CI image build | ✅ Done |
-| 9 | Flutter mobile app | ⏳ Planned |
+| 9 | Flutter mobile app: auth, doctor browsing, booking, doctor agenda + availability, notifications — en/fr/ar with RTL | ✅ Done |
 
 Doctors publish weekly availability windows and a per-doctor slot duration; the server
 computes bookable slots. Booking honours the doctor's `acceptanceMode` (`MANUAL` →
