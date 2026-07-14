@@ -1,0 +1,18 @@
+# Dart / Flutter tooling
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# Generated sources — rebuilt in CI (flutter gen-l10n + build_runner)
+lib/l10n/gen/
+*.g.dart
+
+# IDE cruft
+.idea/
+*.iml
+
+# Coverage output
+coverage/
