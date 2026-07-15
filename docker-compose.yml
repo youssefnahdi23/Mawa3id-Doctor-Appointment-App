@@ -34,8 +34,11 @@ services:
       PATREON_URL: ${PATREON_URL:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-    ports:
-      - "${SERVER_PORT:-8080}:8080"
+    # Not published to the host: the backend is reached only through the Caddy
+    # reverse proxy (via the internal hostname `app:8080`). This keeps plain HTTP
+    # off the host so all external traffic is TLS-terminated by Caddy.
+    expose:
+      - "8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
       interval: 15s
@@ -44,5 +47,27 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # TLS-terminating reverse proxy. Caddy auto-obtains and auto-renews a Let's
+  # Encrypt certificate for $DOMAIN (or serves a local self-signed cert when
+  # DOMAIN=localhost). See ./Caddyfile.
+  caddy:
+    image: caddy:2
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Persists issued certs + the ACME account key so restarts don't re-hit
+      # Let's Encrypt rate limits.
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
   db-data:
+  caddy-data:
+  caddy-config:
