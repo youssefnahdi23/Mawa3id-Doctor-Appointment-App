@@ -1,10 +1,11 @@
 # Mawa3id — Flutter mobile app
 
-Patient & doctor client for the Mawa3id backend (`../backend`). Iteration 9
-scope: authentication for both roles, doctor browsing with search/filters and
-read-only ratings, slot picking & booking, the doctor agenda with a minimal
-weekly-availability editor, and in-app notifications — in **English, French
-and Arabic (RTL)**.
+Patient & doctor client for the Mawa3id backend (`../backend`). Covers
+authentication for both roles, doctor browsing with search/filters and ratings,
+slot picking & booking, the doctor agenda with a minimal weekly-availability
+editor, in-app notifications, and the **post-visit flow** — doctors attach a
+medical record (which completes the visit), patients read their record history
+and leave star reviews — in **English, French and Arabic (RTL)**.
 
 ## Quick start
 
@@ -55,7 +56,8 @@ lib/
   app/         router (role-branched shells), app widget, splash
   core/        dio client + auth interceptor, error mapping, page wrapper,
                secure token storage, wall-clock time codec, l10n helpers
-  features/    auth, doctors, appointments, availability, notifications
+  features/    auth, doctors, appointments, availability, notifications,
+               records, reviews
                (each: data/ models+repository, state/ controllers, ui/)
   l10n/        app_{en,fr,ar}.arb (+ generated gen/, gitignored)
 ```
@@ -68,5 +70,4 @@ relative timestamps.
 
 ## Out of scope (this iteration)
 
-Medical records, writing reviews (ratings display is read-only), donations,
-push notifications (in-app only), doctor profile editing.
+Donations, push notifications (in-app only), doctor profile editing.

@@ -14,6 +14,10 @@ import '../features/availability/ui/availability_editor_screen.dart';
 import '../features/doctors/ui/doctor_detail_screen.dart';
 import '../features/doctors/ui/doctor_list_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
+import '../features/records/ui/patient_records_screen.dart';
+import '../features/records/ui/record_detail_screen.dart';
+import '../features/records/ui/record_form_screen.dart';
+import '../features/reviews/ui/review_form_screen.dart';
 import 'shells.dart';
 import 'splash_screen.dart';
 
@@ -84,8 +88,28 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/p/appointments',
-                builder: (_, __) => const PatientAppointmentsScreen()),
+              path: '/p/appointments',
+              builder: (_, __) => const PatientAppointmentsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'records',
+                  builder: (_, __) => const PatientRecordsScreen(),
+                ),
+                GoRoute(
+                  path: ':id/record',
+                  builder: (_, state) => RecordDetailScreen(
+                      appointmentId: int.parse(state.pathParameters['id']!)),
+                ),
+                GoRoute(
+                  path: ':id/review',
+                  builder: (_, state) => ReviewFormScreen(
+                    appointmentId: int.parse(state.pathParameters['id']!),
+                    doctorId: int.parse(
+                        state.uri.queryParameters['doctorId']!),
+                  ),
+                ),
+              ],
+            ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
@@ -100,8 +124,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/d/appointments',
-                builder: (_, __) => const DoctorAppointmentsScreen()),
+              path: '/d/appointments',
+              builder: (_, __) => const DoctorAppointmentsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':id/record',
+                  builder: (_, state) => RecordFormScreen(
+                      appointmentId: int.parse(state.pathParameters['id']!)),
+                ),
+              ],
+            ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(

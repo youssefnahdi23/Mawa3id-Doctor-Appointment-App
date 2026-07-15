@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/error_l10n.dart';
 import '../../../core/l10n/l10n.dart';
@@ -114,6 +115,8 @@ class DoctorAppointmentsScreen extends ConsumerWidget {
                                 onAction: (action) =>
                                     _transition(context, ref,
                                         (repo) => action(repo, item.id)),
+                                onRecord: () => context
+                                    .go('/d/appointments/${item.id}/record'),
                               ),
                             ],
                           ),
@@ -134,41 +137,49 @@ class DoctorAppointmentsScreen extends ConsumerWidget {
 typedef _RepoAction = Future<AppointmentResponse> Function(
     AppointmentRepository repo, int id);
 
-/// Buttons legal for the appointment's current status
-/// (PENDING → accept/reject, ACCEPTED → complete/cancel).
+/// Buttons legal for the appointment's current status. PENDING → accept/reject;
+/// ACCEPTED → complete-with-notes (opens the record form, which completes the
+/// visit) / cancel; COMPLETED → view/edit the record.
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.status, required this.onAction});
+  const _ActionRow({
+    required this.status,
+    required this.onAction,
+    required this.onRecord,
+  });
 
   final AppointmentStatus status;
   final void Function(_RepoAction) onAction;
+  final VoidCallback onRecord;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final actions = <(String, _RepoAction, bool)>[
-      if (status == AppointmentStatus.pending) ...[
-        (l10n.actionAccept, (repo, id) => repo.accept(id), true),
-        (l10n.actionReject, (repo, id) => repo.reject(id), false),
-      ],
-      if (status == AppointmentStatus.accepted) ...[
-        (l10n.actionComplete, (repo, id) => repo.complete(id), true),
-        (l10n.actionCancel, (repo, id) => repo.cancel(id), false),
-      ],
-    ];
-    if (actions.isEmpty) return const SizedBox.shrink();
+    final children = <Widget>[];
+    switch (status) {
+      case AppointmentStatus.pending:
+        children.add(FilledButton.tonal(
+            onPressed: () => onAction((repo, id) => repo.accept(id)),
+            child: Text(l10n.actionAccept)));
+        children.add(TextButton(
+            onPressed: () => onAction((repo, id) => repo.reject(id)),
+            child: Text(l10n.actionReject)));
+      case AppointmentStatus.accepted:
+        children.add(FilledButton.tonal(
+            onPressed: onRecord, child: Text(l10n.recordCompleteWithNotes)));
+        children.add(TextButton(
+            onPressed: () => onAction((repo, id) => repo.cancel(id)),
+            child: Text(l10n.actionCancel)));
+      case AppointmentStatus.completed:
+        children.add(TextButton(
+            onPressed: onRecord, child: Text(l10n.recordViewEdit)));
+      case AppointmentStatus.rejected:
+      case AppointmentStatus.cancelled:
+        break;
+    }
+    if (children.isEmpty) return const SizedBox.shrink();
     return Align(
       alignment: AlignmentDirectional.centerEnd,
-      child: Wrap(
-        spacing: 8,
-        children: [
-          for (final (label, action, primary) in actions)
-            primary
-                ? FilledButton.tonal(
-                    onPressed: () => onAction(action), child: Text(label))
-                : TextButton(
-                    onPressed: () => onAction(action), child: Text(label)),
-        ],
-      ),
+      child: Wrap(spacing: 8, children: children),
     );
   }
 }
