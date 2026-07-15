@@ -37,16 +37,48 @@ Spring Boot REST API. See [`backend/README.md`](backend/README.md) for full deta
 
 ### Quick start (Docker)
 
-Requires only Docker. Brings up the API **and** PostgreSQL together; Flyway migrations
-apply on boot.
+Requires only Docker. Brings up the API, PostgreSQL, **and** a Caddy reverse proxy
+that terminates TLS; Flyway migrations apply on boot.
 
 ```bash
 cp .env.example .env      # then set DB_PASSWORD and JWT_SECRET
 docker compose up --build
 ```
 
-The API is on `http://localhost:8080` (Swagger at `/swagger-ui.html`, health at
-`/actuator/health`). Stop with `docker compose down` (add `-v` to also drop the DB volume).
+The API is served over HTTPS behind Caddy at `https://localhost` (Swagger at
+`/swagger-ui.html`, health at `/actuator/health`). Locally, `DOMAIN=localhost` makes
+Caddy serve a **self-signed** cert, so expect a browser warning — with `curl`, use
+`-k` (e.g. `curl -k https://localhost/actuator/health`). Port 8080 is no longer
+published to the host; all traffic goes through Caddy on 80/443. Stop with
+`docker compose down` (add `-v` to also drop the DB and cert volumes).
+
+### Production HTTPS (Let's Encrypt)
+
+Caddy auto-provisions and auto-renews a Let's Encrypt certificate — no certbot cron
+or manual renewal. On your server:
+
+1. Point a DNS **A record** for your domain at the server's public IP.
+2. Open inbound ports **80 and 443** (80 is required for the ACME HTTP-01 challenge).
+3. In `.env`, set `DOMAIN=your-domain.com`.
+4. `docker compose up -d --build`.
+
+Caddy obtains the cert on first boot; check `docker compose logs caddy` for
+`certificate obtained`. Then `curl https://your-domain.com/actuator/health` succeeds
+with a valid, trusted chain (no `-k`). The cert and ACME account persist in the
+`caddy-data` volume, so restarts don't re-issue.
+
+Caddy manages certs without a contact email; to also receive Let's Encrypt expiry
+notices, set the `email` line in [`Caddyfile`](Caddyfile).
+
+> **Tip:** Let's Encrypt has [rate limits](https://letsencrypt.org/docs/rate-limits/).
+> When first wiring up a domain, uncomment the staging `acme_ca` line in
+> [`Caddyfile`](Caddyfile) to validate the flow with a throwaway test cert, then
+> re-comment it and restart to get the real one.
+
+Once a real domain is live, also update these HTTP/localhost defaults to
+`https://<domain>`: the Stripe redirect URLs (`STRIPE_SUCCESS_URL` /
+`STRIPE_CANCEL_URL`), the mobile client's `--dart-define=API_BASE_URL=...`, and
+consider tightening the backend CORS origins to your real origin.
 
 ### Quick start (local JDK)
 

@@ -1,0 +1,20 @@
+{
+	# Caddy obtains and auto-renews the Let's Encrypt cert without needing a
+	# contact email. To also receive expiry / policy notices from Let's Encrypt,
+	# uncomment the next line and set your address:
+	# email you@example.com
+	#
+	# For dry-run testing against a real domain without burning Let's Encrypt rate
+	# limits, uncomment to use the staging CA (issues an untrusted test cert):
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# DOMAIN=localhost (default) -> Caddy serves an internal self-signed cert (no ACME).
+# DOMAIN=<real host>         -> Caddy auto-provisions a Let's Encrypt cert on :443
+#                               and auto-renews it. Plain HTTP is redirected to HTTPS.
+{$DOMAIN:localhost} {
+	reverse_proxy app:8080 {
+		# Tell the backend the request originally arrived over HTTPS.
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
