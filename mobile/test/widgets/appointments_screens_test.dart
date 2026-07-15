@@ -91,7 +91,7 @@ void main() {
       verifyNever(() => repository.cancel(any()));
     });
 
-    testWidgets('completed appointments offer no cancel button',
+    testWidgets('completed appointments offer record + review, not cancel',
         (tester) async {
       stubMine([_appointment(AppointmentStatus.completed)]);
 
@@ -102,6 +102,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Cancel'), findsNothing);
+      expect(find.text('View record'), findsOneWidget);
+      expect(find.text('Review'), findsOneWidget);
     });
   });
 
@@ -126,8 +128,7 @@ void main() {
       expect(find.text('Complete'), findsNothing);
     });
 
-    testWidgets('ACCEPTED shows complete/cancel and accept works end-to-end',
-        (tester) async {
+    testWidgets('ACCEPTED shows complete-with-notes/cancel', (tester) async {
       stubQueue([_appointment(AppointmentStatus.accepted)]);
 
       await tester.pumpWidget(
@@ -136,9 +137,21 @@ void main() {
       ]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Complete'), findsOneWidget);
+      expect(find.text('Complete with notes'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Accept'), findsNothing);
+    });
+
+    testWidgets('COMPLETED shows view/edit record', (tester) async {
+      stubQueue([_appointment(AppointmentStatus.completed)]);
+
+      await tester.pumpWidget(
+          wrapWithApp(const DoctorAppointmentsScreen(), overrides: [
+        appointmentRepositoryProvider.overrideWithValue(repository),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('View / edit record'), findsOneWidget);
     });
 
     testWidgets('tapping Accept calls the repository and refetches',
@@ -158,7 +171,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(() => repository.accept(11)).called(1);
-      expect(find.text('Complete'), findsOneWidget);
+      expect(find.text('Complete with notes'), findsOneWidget);
     });
   });
 }

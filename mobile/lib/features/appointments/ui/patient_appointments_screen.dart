@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/error_l10n.dart';
 import '../../../core/l10n/l10n.dart';
@@ -54,7 +55,14 @@ class PatientAppointmentsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.tabAppointments),
-        actions: sessionAppBarActions(context, ref),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.folder_shared_outlined),
+            tooltip: l10n.myRecordsTitle,
+            onPressed: () => context.go('/p/appointments/records'),
+          ),
+          ...sessionAppBarActions(context, ref),
+        ],
       ),
       body: Column(
         children: [
@@ -94,6 +102,8 @@ class PatientAppointmentsScreen extends ConsumerWidget {
                       final cancellable =
                           item.status == AppointmentStatus.pending ||
                               item.status == AppointmentStatus.accepted;
+                      final completed =
+                          item.status == AppointmentStatus.completed;
                       return Card(
                         margin: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 6),
@@ -133,6 +143,26 @@ class PatientAppointmentsScreen extends ConsumerWidget {
                                         _cancel(context, ref, item),
                                     child: Text(
                                         l10n.cancelAppointmentAction),
+                                  ),
+                                ),
+                              if (completed)
+                                Align(
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  child: Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      TextButton(
+                                        onPressed: () => context.go(
+                                            '/p/appointments/${item.id}/record'),
+                                        child: Text(l10n.recordViewAction),
+                                      ),
+                                      FilledButton.tonal(
+                                        onPressed: () => context.go(
+                                            '/p/appointments/${item.id}/review'
+                                            '?doctorId=${item.doctorId}'),
+                                        child: Text(l10n.reviewAction),
+                                      ),
+                                    ],
                                   ),
                                 ),
                             ],
