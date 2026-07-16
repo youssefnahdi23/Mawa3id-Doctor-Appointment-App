@@ -16,9 +16,11 @@ public class AppUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // The JWT subject is the account username (always present and unique), so the
+        // filter resolves the principal by username rather than the now-optional email.
+        return userRepository.findByUsername(username)
                 .map(AppUserDetails::new)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 }

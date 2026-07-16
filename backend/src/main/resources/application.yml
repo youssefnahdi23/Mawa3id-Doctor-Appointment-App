@@ -40,8 +40,25 @@ mawa3id:
     # Set JWT_FAIL_ON_MISSING_SECRET=true in staging/production so the app refuses to
     # boot with a throwaway ephemeral key instead of silently accepting one.
     fail-on-missing-secret: ${JWT_FAIL_ON_MISSING_SECRET:false}
+  auth:
+    refresh:
+      # Refresh-token session lifetime. Access tokens are short-lived (mawa3id.jwt.expiration-ms);
+      # the refresh token lets clients obtain new ones without re-authenticating.
+      ttl-days: ${AUTH_REFRESH_TTL_DAYS:30}
+    challenge:
+      # Email/phone verification and password-reset secrets: how long they stay valid and
+      # how many wrong guesses a single code tolerates before it is burned.
+      ttl-seconds: ${AUTH_CHALLENGE_TTL_SECONDS:900}
+      max-attempts: ${AUTH_CHALLENGE_MAX_ATTEMPTS:5}
+      code-digits: ${AUTH_CHALLENGE_CODE_DIGITS:6}
+    delivery:
+      # How verification/reset secrets are delivered until a real email/SMS provider is wired.
+      #   log      - log the secret at WARN (DEVELOPMENT ONLY).
+      #   disabled - refuse delivery with 503 so an unconfigured server fails loudly.
+      # Set AUTH_DELIVERY_MODE=disabled in staging/production until a ChallengeSender is configured.
+      mode: ${AUTH_DELIVERY_MODE:log}
   ratelimit:
-    # Per-IP fixed-window throttle on the public auth endpoints (login/register).
+    # Per-IP fixed-window throttle on the public auth endpoints (login/register/refresh/reset).
     enabled: ${RATELIMIT_ENABLED:true}
     auth:
       capacity: ${RATELIMIT_AUTH_CAPACITY:10}

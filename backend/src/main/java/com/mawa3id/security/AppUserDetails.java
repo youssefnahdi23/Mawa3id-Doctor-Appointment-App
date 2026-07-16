@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Adapts our {@link User} entity to Spring Security's {@link UserDetails}.
- * The username is the user's email.
+ * The principal name is the account username (also the JWT subject).
  */
 public class AppUserDetails implements UserDetails {
 
@@ -40,7 +40,12 @@ public class AppUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmail();
+        return user.getUsername();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return user.isActive();
     }
 
     @Override
@@ -55,11 +60,6 @@ public class AppUserDetails implements UserDetails {
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
         return true;
     }
 }
