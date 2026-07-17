@@ -11,6 +11,11 @@ enum AcceptanceMode {
   auto,
 }
 
+extension AcceptanceModeWire on AcceptanceMode {
+  /// Backend enum name sent in request bodies.
+  String get wireName => this == AcceptanceMode.auto ? 'AUTO' : 'MANUAL';
+}
+
 @JsonSerializable(createToJson: false)
 class SpecialtyResponse {
   const SpecialtyResponse({

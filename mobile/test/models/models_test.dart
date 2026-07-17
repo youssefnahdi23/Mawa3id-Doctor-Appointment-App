@@ -4,6 +4,7 @@ import 'package:mawa3id/features/auth/data/auth_models.dart';
 import 'package:mawa3id/features/availability/data/availability_models.dart';
 import 'package:mawa3id/features/doctors/data/doctor_models.dart';
 import 'package:mawa3id/features/notifications/data/notification_models.dart';
+import 'package:mawa3id/features/patient/data/patient_models.dart';
 
 /// Fixtures mirror the exact field names of the backend DTO records.
 void main() {
@@ -61,6 +62,28 @@ void main() {
         {'userId': 9, 'username': 'amal', 'email': 'doc@x.y', 'role': 'DOCTOR'});
     expect(me.emailVerified, isFalse);
     expect(me.phoneVerified, isFalse);
+  });
+
+  test('PatientResponse.fromJson parses date and tolerates a null one', () {
+    final patient = PatientResponse.fromJson({
+      'userId': 7,
+      'email': 'p@x.y',
+      'fullName': 'Sami Ben',
+      'dateOfBirth': '1995-03-07',
+      'patientCode': 'MW-ABC234',
+    });
+    expect(patient.fullName, 'Sami Ben');
+    expect(patient.patientCode, 'MW-ABC234');
+    expect(patient.dateOfBirth, DateTime(1995, 3, 7));
+
+    final noDob = PatientResponse.fromJson({
+      'userId': 7,
+      'email': 'p@x.y',
+      'fullName': 'Sami Ben',
+      'dateOfBirth': null,
+      'patientCode': 'MW-ABC234',
+    });
+    expect(noDob.dateOfBirth, isNull);
   });
 
   test('SpecialtyResponse.fromJson with null description', () {
