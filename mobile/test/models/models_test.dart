@@ -12,21 +12,39 @@ void main() {
       'token': 'jwt',
       'tokenType': 'Bearer',
       'expiresInMs': 86400000,
+      'refreshToken': 'refresh-1',
       'userId': 7,
+      'username': 'sami',
       'email': 'a@b.c',
       'role': 'PATIENT',
     });
     expect(auth.token, 'jwt');
     expect(auth.tokenType, 'Bearer');
     expect(auth.expiresInMs, 86400000);
+    expect(auth.refreshToken, 'refresh-1');
     expect(auth.userId, 7);
+    expect(auth.username, 'sami');
     expect(auth.role, UserRole.patient);
+  });
+
+  test('AuthResponse.fromJson tolerates a missing refreshToken and email', () {
+    final auth = AuthResponse.fromJson({
+      'token': 'jwt',
+      'tokenType': 'Bearer',
+      'expiresInMs': 1000,
+      'userId': 7,
+      'username': 'sami',
+      'role': 'PATIENT',
+    });
+    expect(auth.refreshToken, isNull);
+    expect(auth.email, isNull);
   });
 
   test('MeResponse.fromJson', () {
     final me = MeResponse.fromJson(
-        {'userId': 9, 'email': 'doc@x.y', 'role': 'DOCTOR'});
+        {'userId': 9, 'username': 'amal', 'email': 'doc@x.y', 'role': 'DOCTOR'});
     expect(me.userId, 9);
+    expect(me.username, 'amal');
     expect(me.role, UserRole.doctor);
   });
 

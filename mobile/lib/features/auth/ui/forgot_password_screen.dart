@@ -5,29 +5,29 @@ import 'package:go_router/go_router.dart';
 import '../../../core/l10n/error_l10n.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../core/widgets/session_actions.dart';
 import '../data/auth_repository.dart';
-import '../state/session_controller.dart';
 import 'auth_form_widgets.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+/// Starts a password reset: the user enters any identifier and, if it maps to an
+/// account with an email, the backend sends a reset code. The response is uniform
+/// regardless, so this always advances to the reset screen.
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
+  const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifier = TextEditingController();
-  final _password = TextEditingController();
   String? _error;
   bool _submitting = false;
 
   @override
   void dispose() {
     _identifier.dispose();
-    _password.dispose();
     super.dispose();
   }
 
@@ -38,19 +38,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
-      final auth = await ref.read(authRepositoryProvider).login(
-            identifier: _identifier.text.trim(),
-            password: _password.text,
-          );
-      await ref.read(sessionControllerProvider.notifier).signIn(auth);
-      // Router redirect takes over from here.
+      await ref
+          .read(authRepositoryProvider)
+          .forgotPassword(_identifier.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.forgotPasswordSent)),
+      );
+      context.go('/reset-password');
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.kind == ApiErrorKind.unauthorized
-            ? context.l10n.errorBadCredentials
-            : localizedErrorMessage(context, e);
-      });
+      setState(() => _error = localizedErrorMessage(context, e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -60,10 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.appTitle),
-        actions: const [LocaleMenuButton()],
-      ),
+      appBar: AppBar(title: Text(l10n.forgotPasswordTitle)),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -75,10 +70,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(l10n.loginTitle,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 24),
+                  Text(l10n.forgotPasswordPrompt),
+                  const SizedBox(height: 16),
                   AuthErrorBanner(message: _error),
                   TextFormField(
                     controller: _identifier,
@@ -87,30 +80,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       hintText: l10n.identifierHint,
                     ),
                     keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.username],
                     validator: (value) => value == null || value.trim().isEmpty
                         ? l10n.validationRequired
                         : null,
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _password,
-                    decoration: InputDecoration(labelText: l10n.password),
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.password],
-                    onFieldSubmitted: (_) => _submit(),
-                    validator: (value) => value == null || value.isEmpty
-                        ? l10n.validationRequired
-                        : null,
-                  ),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: TextButton(
-                      onPressed: () => context.go('/forgot-password'),
-                      child: Text(l10n.forgotPassword),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 24),
                   FilledButton(
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
@@ -118,16 +92,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(l10n.signIn),
-                  ),
-                  const SizedBox(height: 24),
-                  TextButton(
-                    onPressed: () => context.go('/register/patient'),
-                    child: Text(l10n.registerAsPatient),
+                        : Text(l10n.sendCode),
                   ),
                   TextButton(
-                    onPressed: () => context.go('/register/doctor'),
-                    child: Text(l10n.registerAsDoctor),
+                    onPressed: () => context.go('/reset-password'),
+                    child: Text(l10n.haveResetCode),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/login'),
+                    child: Text(l10n.backToLogin),
                   ),
                 ],
               ),

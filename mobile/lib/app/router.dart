@@ -7,9 +7,13 @@ import '../features/appointments/ui/patient_appointments_screen.dart';
 import '../features/appointments/ui/slot_picker_screen.dart';
 import '../features/auth/data/auth_models.dart';
 import '../features/auth/state/session_controller.dart';
+import '../features/auth/ui/forgot_password_screen.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/auth/ui/register_doctor_screen.dart';
 import '../features/auth/ui/register_patient_screen.dart';
+import '../features/auth/ui/reset_password_screen.dart';
+import '../features/auth/ui/verify_email_screen.dart';
+import '../features/auth/ui/verify_phone_screen.dart';
 import '../features/availability/ui/availability_editor_screen.dart';
 import '../features/doctors/ui/doctor_detail_screen.dart';
 import '../features/doctors/ui/doctor_list_screen.dart';
@@ -34,8 +38,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final session = ref.read(sessionControllerProvider);
       final location = state.matchedLocation;
-      final onAuthScreen =
-          location == '/login' || location.startsWith('/register');
+      // Screens reachable while logged out: login, registration, and the
+      // password-recovery flow.
+      final onAuthScreen = location == '/login' ||
+          location.startsWith('/register') ||
+          location == '/forgot-password' ||
+          location == '/reset-password';
 
       if (session.isLoading) return location == '/splash' ? null : '/splash';
 
@@ -62,6 +70,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/register/doctor',
           builder: (_, __) => const RegisterDoctorScreen()),
+      GoRoute(
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordScreen()),
+      GoRoute(
+          path: '/reset-password',
+          builder: (_, __) => const ResetPasswordScreen()),
+      GoRoute(
+          path: '/verify/email',
+          builder: (_, __) => const VerifyEmailScreen()),
+      GoRoute(
+          path: '/verify/phone',
+          builder: (_, __) => const VerifyPhoneScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) =>
             RoleShell(navigationShell: shell, tabs: patientTabs),

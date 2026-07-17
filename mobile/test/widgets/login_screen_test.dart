@@ -16,16 +16,18 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Enter a valid email address'), findsOneWidget);
-    expect(find.text('This field is required'), findsOneWidget);
+    // Both the identifier and password fields flag the empty submission.
+    expect(find.text('This field is required'), findsNWidgets(2));
   });
 
-  testWidgets('offers both registration entry points', (tester) async {
+  testWidgets('offers both registration entry points and password recovery',
+      (tester) async {
     await tester.pumpWidget(wrapWithApp(const LoginScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('Create a patient account'), findsOneWidget);
     expect(find.text('Join as a doctor'), findsOneWidget);
+    expect(find.text('Forgot password?'), findsOneWidget);
   });
 
   testWidgets('renders RTL with Arabic strings under the ar locale',

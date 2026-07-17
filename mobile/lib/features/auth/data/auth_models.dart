@@ -16,8 +16,10 @@ class AuthResponse {
     required this.tokenType,
     required this.expiresInMs,
     required this.userId,
+    required this.username,
     required this.email,
     required this.role,
+    this.refreshToken,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) =>
@@ -26,8 +28,17 @@ class AuthResponse {
   final String token;
   final String tokenType;
   final int expiresInMs;
+
+  /// Opaque, rotating credential used to obtain a fresh access token. Nullable so
+  /// older backends that don't issue one still parse.
+  final String? refreshToken;
   final int userId;
-  final String email;
+
+  /// Stable account handle; always present on the current backend.
+  final String username;
+
+  /// Optional as of the auth overhaul (phone-only / social accounts have none).
+  final String? email;
   final UserRole role;
 }
 
@@ -35,6 +46,7 @@ class AuthResponse {
 class MeResponse {
   const MeResponse({
     required this.userId,
+    required this.username,
     required this.email,
     required this.role,
   });
@@ -43,6 +55,7 @@ class MeResponse {
       _$MeResponseFromJson(json);
 
   final int userId;
-  final String email;
+  final String username;
+  final String? email;
   final UserRole role;
 }

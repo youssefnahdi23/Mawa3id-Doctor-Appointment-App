@@ -9,12 +9,17 @@ class _MockDio extends Mock implements Dio {}
 Response<Map<String, dynamic>> _ok(Map<String, dynamic> data) =>
     Response(requestOptions: RequestOptions(), data: data, statusCode: 200);
 
+Response<void> _okVoid() =>
+    Response(requestOptions: RequestOptions(), statusCode: 200);
+
 final _authJson = {
   'token': 'jwt',
   'tokenType': 'Bearer',
   'expiresInMs': 1000,
+  'refreshToken': 'refresh-1',
   'userId': 1,
-  'email': 'a@b.c',
+  'username': 'sami',
+  'email': 'patient@example.com',
   'role': 'PATIENT',
 };
 
@@ -27,26 +32,38 @@ void main() {
     repository = AuthRepository(dio);
   });
 
-  test('login posts credentials to /api/auth/login', () async {
+  void stubPost() {
     when(() => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')))
         .thenAnswer((_) async => _ok(_authJson));
+  }
 
-    final auth = await repository.login(email: 'a@b.c', password: 'secret12');
+  void stubVoidPost() {
+    when(() => dio.post<void>(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => _okVoid());
+    when(() => dio.post<void>(any())).thenAnswer((_) async => _okVoid());
+  }
+
+  test('login posts identifier to /api/auth/login and parses tokens', () async {
+    stubPost();
+
+    final auth =
+        await repository.login(identifier: 'sami', password: 'password123');
 
     expect(auth.token, 'jwt');
+    expect(auth.refreshToken, 'refresh-1');
+    expect(auth.username, 'sami');
     final captured = verify(() => dio.post<Map<String, dynamic>>(
         captureAny(), data: captureAny(named: 'data'))).captured;
     expect(captured[0], '/api/auth/login');
-    expect(captured[1], {'email': 'a@b.c', 'password': 'secret12'});
+    expect(captured[1], {'identifier': 'sami', 'password': 'password123'});
   });
 
   test('registerPatient serializes dateOfBirth as yyyy-MM-dd', () async {
-    when(() => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')))
-        .thenAnswer((_) async => _ok(_authJson));
+    stubPost();
 
     await repository.registerPatient(
-      email: 'a@b.c',
-      password: 'secret12',
+      email: 'patient@example.com',
+      password: 'password123',
       fullName: 'Sami Ben',
       dateOfBirth: DateTime(1995, 3, 7),
     );
@@ -59,12 +76,11 @@ void main() {
 
   test('registerDoctor omits empty optional fields', () async {
     when(() => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')))
-        .thenAnswer(
-            (_) async => _ok({..._authJson, 'role': 'DOCTOR'}));
+        .thenAnswer((_) async => _ok({..._authJson, 'role': 'DOCTOR'}));
 
     final auth = await repository.registerDoctor(
-      email: 'doc@x.y',
-      password: 'secret12',
+      email: 'doctor@example.com',
+      password: 'password123',
       name: 'Dr. Amal',
       specialtyId: 2,
       cabinetAddress: '',
@@ -81,13 +97,52 @@ void main() {
     expect(body.containsKey('phone'), isFalse);
   });
 
-  test('me() reads /api/auth/me', () async {
-    when(() => dio.get<Map<String, dynamic>>(any())).thenAnswer(
-        (_) async => _ok({'userId': 1, 'email': 'a@b.c', 'role': 'PATIENT'}));
+  test('me() reads /api/auth/me including username', () async {
+    when(() => dio.get<Map<String, dynamic>>(any())).thenAnswer((_) async =>
+        _ok({
+          'userId': 1,
+          'username': 'sami',
+          'email': 'patient@example.com',
+          'role': 'PATIENT'
+        }));
 
     final me = await repository.me();
 
     expect(me.role, UserRole.patient);
+    expect(me.username, 'sami');
     verify(() => dio.get<Map<String, dynamic>>('/api/auth/me')).called(1);
+  });
+
+  test('forgotPassword posts the identifier', () async {
+    stubVoidPost();
+
+    await repository.forgotPassword('sami@x.y');
+
+    final captured = verify(() => dio.post<void>(
+        captureAny(), data: captureAny(named: 'data'))).captured;
+    expect(captured[0], '/api/auth/password/forgot');
+    expect(captured[1], {'identifier': 'sami@x.y'});
+  });
+
+  test('resetPassword posts token and new password', () async {
+    stubVoidPost();
+
+    await repository.resetPassword(token: 'code-9', newPassword: 'newpassword123');
+
+    final captured = verify(() => dio.post<void>(
+        captureAny(), data: captureAny(named: 'data'))).captured;
+    expect(captured[0], '/api/auth/password/reset');
+    expect(captured[1], {'token': 'code-9', 'newPassword': 'newpassword123'});
+  });
+
+  test('confirmPhone posts phone and code', () async {
+    stubVoidPost();
+
+    await repository.confirmPhone(phone: '+212600', code: '123456');
+
+    final captured = verify(() => dio.post<void>(
+        captureAny(), data: captureAny(named: 'data'))).captured;
+    expect(captured[0], '/api/auth/verify/phone/confirm');
+    expect(captured[1], {'phone': '+212600', 'code': '123456'});
   });
 }
