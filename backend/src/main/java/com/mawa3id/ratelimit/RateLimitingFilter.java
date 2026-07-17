@@ -30,8 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitingFilter extends OncePerRequestFilter {
 
-    private static final String LOGIN_PATH = "/api/auth/login";
-    private static final String REGISTER_PREFIX = "/api/auth/register";
+    private static final String AUTH_PREFIX = "/api/auth/";
 
     private final boolean enabled;
     private final int capacity;
@@ -64,13 +63,16 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /** Only the public auth mutations are throttled; preflight requests are exempt. */
+    /**
+     * Auth mutations are throttled: login, register, refresh, logout, verification and
+     * password-reset. Reads ({@code GET /api/auth/me}) and CORS preflight are exempt.
+     */
     private boolean isRateLimited(HttpServletRequest request) {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+        String method = request.getMethod();
+        if ("OPTIONS".equalsIgnoreCase(method) || "GET".equalsIgnoreCase(method)) {
             return false;
         }
-        String uri = request.getRequestURI();
-        return uri.equals(LOGIN_PATH) || uri.startsWith(REGISTER_PREFIX);
+        return request.getRequestURI().startsWith(AUTH_PREFIX);
     }
 
     private String clientKey(HttpServletRequest request) {

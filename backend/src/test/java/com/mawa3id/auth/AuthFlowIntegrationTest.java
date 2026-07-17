@@ -54,6 +54,8 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("PATIENT"))
                 .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.username").value("alice"))
                 .andReturn();
 
         String token = tokenFrom(registered);
@@ -73,12 +75,20 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.patientCode").value(org.hamcrest.Matchers.startsWith("MW-")));
 
-        // Login returns a fresh token
+        // Login by email returns a fresh token + refresh token
         String loginBody = """
-                {"email":"alice@example.com","password":"password123"}
+                {"identifier":"alice@example.com","password":"password123"}
                 """;
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON).content(loginBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty());
+
+        // Login by username also works (unified identifier)
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"alice\",\"password\":\"password123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty());
     }
@@ -95,7 +105,7 @@ class AuthFlowIntegrationTest {
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"bob@example.com\",\"password\":\"wrongpass\"}"))
+                        .content("{\"identifier\":\"bob@example.com\",\"password\":\"wrongpass\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -170,7 +180,7 @@ class AuthFlowIntegrationTest {
         // Login with a different casing still succeeds
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"alice@example.com\",\"password\":\"password123\"}"))
+                        .content("{\"identifier\":\"Alice@Example.com\",\"password\":\"password123\"}"))
                 .andExpect(status().isOk());
     }
 

@@ -33,7 +33,7 @@ class RateLimitingIntegrationTest {
     private MockMvc mockMvc;
 
     private static final String LOGIN_BODY = """
-            {"email":"nobody@example.com","password":"wrongpass"}
+            {"identifier":"nobody@example.com","password":"wrongpass"}
             """;
 
     @Test

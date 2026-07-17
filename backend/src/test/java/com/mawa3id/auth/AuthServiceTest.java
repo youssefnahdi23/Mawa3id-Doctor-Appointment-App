@@ -1,11 +1,13 @@
 package com.mawa3id.auth;
 
+import com.mawa3id.auth.audit.AuthAuditService;
+import com.mawa3id.auth.audit.AuthEventType;
+import com.mawa3id.auth.contact.ContactService;
 import com.mawa3id.auth.dto.AuthResponse;
 import com.mawa3id.auth.dto.LoginRequest;
-import com.mawa3id.auth.dto.RegisterDoctorRequest;
 import com.mawa3id.auth.dto.RegisterPatientRequest;
+import com.mawa3id.auth.session.RefreshTokenService;
 import com.mawa3id.common.ApiException;
-import com.mawa3id.common.ResourceNotFoundException;
 import com.mawa3id.doctor.DoctorRepository;
 import com.mawa3id.doctor.DoctorService;
 import com.mawa3id.patient.PatientRepository;
@@ -14,33 +16,39 @@ import com.mawa3id.security.JwtService;
 import com.mawa3id.user.Role;
 import com.mawa3id.user.User;
 import com.mawa3id.user.UserRepository;
+import com.mawa3id.user.UserStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 /**
- * Unit tests for {@link AuthService} in isolation. These target branches the
- * MockMvc integration tests cannot easily reach: the duplicate-email conflict,
- * email normalization before persistence, the login fallback-401 when the
- * authenticated user is missing, and delegation of specialty resolution.
+ * Unit tests for {@link AuthService} branch logic that the integration tests cannot
+ * easily reach: duplicate-email conflict, username derivation, the uniform 401 on every
+ * login failure mode (unknown / wrong password / disabled), and the refresh outcomes.
  */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -52,87 +60,206 @@ class AuthServiceTest {
     @Mock private DoctorService doctorService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
-    @Mock private AuthenticationManager authenticationManager;
+    @Mock private ContactService contactService;
+    @Mock private RefreshTokenService refreshTokenService;
+    @Mock private AuthAuditService auditService;
 
-    @InjectMocks private AuthService authService;
+    private AuthService authService;
 
     @Captor private ArgumentCaptor<User> userCaptor;
 
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-07-16T10:00:00Z"), ZoneOffset.UTC);
+
+    @BeforeEach
+    void setUp() {
+        authService = new AuthService(userRepository, patientRepository, doctorRepository,
+                patientService, doctorService, passwordEncoder, jwtService, contactService,
+                refreshTokenService, auditService, CLOCK);
+    }
+
     private RegisterPatientRequest patientRequest(String email) {
-        return new RegisterPatientRequest(email, "password123", "Alice Doe",
-                LocalDate.of(1990, 5, 20));
+        return new RegisterPatientRequest(email, "password123", "Alice Doe", LocalDate.of(1990, 5, 20));
+    }
+
+    /** Persisted users always have an id; the token claim map rejects null values. */
+    private static User withId(User user, long id) {
+        ReflectionTestUtils.setField(user, "id", id);
+        return user;
+    }
+
+    private void stubTokenIssuance() {
+        when(jwtService.generateToken(anyString(), any())).thenReturn("access-jwt");
+        when(jwtService.getExpirationMs()).thenReturn(3_600_000L);
+        when(refreshTokenService.issue(any(), any(), any(), any()))
+                .thenReturn(new RefreshTokenService.IssuedRefresh("refresh-tok", null));
     }
 
     @Test
     void registerPatientWithExistingEmailThrowsConflict() {
-        when(userRepository.existsByEmail("dup@example.com")).thenReturn(true);
+        when(contactService.isEmailTaken("dup@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.registerPatient(patientRequest("dup@example.com")))
+        assertThatThrownBy(() -> authService.registerPatient(patientRequest("dup@example.com"), null, null))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.CONFLICT));
     }
 
     @Test
-    void registerPatientNormalizesEmailBeforePersistingAndReturnsToken() {
-        User saved = mock(User.class);
-        when(saved.getId()).thenReturn(1L);
-        when(saved.getEmail()).thenReturn("alice@example.com");
-        when(saved.getRole()).thenReturn(Role.PATIENT);
-
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+    void registerPatientNormalizesEmailDerivesUsernameAndIssuesTokens() {
+        when(contactService.isEmailTaken("alice@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("alice")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("hash");
-        when(userRepository.save(any(User.class))).thenReturn(saved);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> withId(inv.getArgument(0), 1L));
         when(patientService.generateUniquePatientCode()).thenReturn("MW-ABC234");
-        when(jwtService.generateToken(anyString(), any())).thenReturn("token-xyz");
-        when(jwtService.getExpirationMs()).thenReturn(3_600_000L);
+        stubTokenIssuance();
 
-        // Mixed case + surrounding whitespace must be trimmed and lowercased.
-        AuthResponse response = authService.registerPatient(patientRequest("  Alice@Example.COM  "));
+        AuthResponse response = authService.registerPatient(patientRequest("  Alice@Example.COM  "), "ua", "ip");
 
-        assertThat(response.token()).isEqualTo("token-xyz");
-        assertThat(response.role()).isEqualTo(Role.PATIENT);
-        verify(userRepository).existsByEmail("alice@example.com");
-
+        assertThat(response.token()).isEqualTo("access-jwt");
+        assertThat(response.refreshToken()).isEqualTo("refresh-tok");
+        assertThat(response.username()).isEqualTo("alice");
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getEmail()).isEqualTo("alice@example.com");
+        assertThat(userCaptor.getValue().getUsername()).isEqualTo("alice");
+        verify(contactService).createPrimaryEmail(any(User.class), eq("  Alice@Example.COM  "),
+                eq("alice@example.com"));
+        verify(auditService).record(any(User.class), eq(AuthEventType.REGISTERED), eq("patient"), eq("ip"));
     }
 
     @Test
-    void loginThrowsUnauthorizedWhenUserMissingAfterAuthentication() {
-        // authenticate() succeeds (returns a stub) but the user row is gone.
-        when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
+    void usernameCollisionGetsNumericSuffix() {
+        when(contactService.isEmailTaken(anyString())).thenReturn(false);
+        when(userRepository.existsByUsername("alice")).thenReturn(true);
+        when(userRepository.existsByUsername("alice.2")).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("hash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> withId(inv.getArgument(0), 1L));
+        when(patientService.generateUniquePatientCode()).thenReturn("MW-ABC234");
+        stubTokenIssuance();
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("ghost@example.com", "password123")))
+        AuthResponse response = authService.registerPatient(patientRequest("alice@example.com"), null, null);
+
+        assertThat(response.username()).isEqualTo("alice.2");
+    }
+
+    @Test
+    void loginWithUnknownIdentifierIsUnauthorizedAndStillRunsDummyCompare() {
+        when(contactService.resolveUser("ghost@example.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.matches(eq("password123"), anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("ghost@example.com", "password123", null), null, "ip"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        // A bcrypt comparison runs even for a missing account (timing uniformity).
+        verify(passwordEncoder).matches(eq("password123"), anyString());
+        verify(auditService).record(isNull(), eq(AuthEventType.LOGIN_FAILED), anyString(), eq("ip"));
+    }
+
+    @Test
+    void loginWithWrongPasswordIsUnauthorized() {
+        User user = new User("bob", "bob@example.com", "stored-hash", Role.DOCTOR);
+        when(contactService.resolveUser("bob")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "stored-hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("bob", "wrong", null), null, null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+        verify(refreshTokenService, never()).issue(any(), any(), any(), any());
+    }
+
+    @Test
+    void loginToDisabledAccountIsUnauthorized() {
+        User user = new User("bob", "bob@example.com", "stored-hash", Role.DOCTOR);
+        user.setStatus(UserStatus.DISABLED);
+        when(contactService.resolveUser("bob")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password123", "stored-hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("bob", "password123", null), null, null))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
     }
 
     @Test
-    void loginReturnsTokenForValidUser() {
-        User user = mock(User.class);
-        when(user.getId()).thenReturn(7L);
-        when(user.getEmail()).thenReturn("bob@example.com");
-        when(user.getRole()).thenReturn(Role.DOCTOR);
-        when(userRepository.findByEmail("bob@example.com")).thenReturn(Optional.of(user));
-        when(jwtService.generateToken(anyString(), any())).thenReturn("tok");
-        when(jwtService.getExpirationMs()).thenReturn(3_600_000L);
+    void loginSuccessUpdatesLastLoginAuditsAndIssuesTokens() {
+        User user = new User("bob", "bob@example.com", "stored-hash", Role.DOCTOR);
+        when(contactService.resolveUser("bob@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password123", "stored-hash")).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> withId(inv.getArgument(0), 1L));
+        stubTokenIssuance();
 
-        AuthResponse response = authService.login(new LoginRequest("bob@example.com", "password123"));
+        AuthResponse response = authService.login(
+                new LoginRequest("bob@example.com", "password123", "Pixel"), "ua", "ip");
 
-        assertThat(response.token()).isEqualTo("tok");
-        assertThat(response.role()).isEqualTo(Role.DOCTOR);
+        assertThat(response.token()).isEqualTo("access-jwt");
+        assertThat(user.getLastLoginAt()).isEqualTo(CLOCK.instant());
+        verify(auditService).record(eq(user), eq(AuthEventType.LOGIN_SUCCEEDED), isNull(), eq("ip"));
+        verify(refreshTokenService).issue(user, "Pixel", "ua", "ip");
     }
 
     @Test
-    void registerDoctorDelegatesSpecialtyResolutionAndPropagatesNotFound() {
-        when(doctorService.resolveSpecialty(999L))
-                .thenThrow(new ResourceNotFoundException("Specialty not found: 999"));
+    void refreshReuseIsUnauthorizedAndAudited() {
+        User user = new User("bob", "bob@example.com", "hash", Role.DOCTOR);
+        when(refreshTokenService.rotate("tok", "ua", "ip"))
+                .thenReturn(RefreshTokenService.RotationResult.reuse(user));
 
-        RegisterDoctorRequest request = new RegisterDoctorRequest(
-                "doc@example.com", "password123", "Dr Ghost", 999L, "Clinic", "9-17", "+212");
+        assertThatThrownBy(() -> authService.refresh("tok", "ua", "ip"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+        verify(auditService).record(eq(user), eq(AuthEventType.REFRESH_REUSE_DETECTED), anyString(), eq("ip"));
+    }
 
-        assertThatThrownBy(() -> authService.registerDoctor(request))
-                .isInstanceOf(ResourceNotFoundException.class);
-        verify(doctorService).resolveSpecialty(999L);
+    @Test
+    void refreshInvalidIsUnauthorized() {
+        when(refreshTokenService.rotate(anyString(), any(), any()))
+                .thenReturn(RefreshTokenService.RotationResult.invalid());
+
+        assertThatThrownBy(() -> authService.refresh("tok", null, null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
+
+    @Test
+    void refreshRotatedReturnsFreshPair() {
+        User user = withId(new User("bob", "bob@example.com", "hash", Role.DOCTOR), 7L);
+        when(refreshTokenService.rotate("tok", "ua", "ip"))
+                .thenReturn(RefreshTokenService.RotationResult.rotated("new-refresh", null, user));
+        when(jwtService.generateToken(anyString(), any())).thenReturn("new-access");
+        when(jwtService.getExpirationMs()).thenReturn(3_600_000L);
+
+        AuthResponse response = authService.refresh("tok", "ua", "ip");
+
+        assertThat(response.token()).isEqualTo("new-access");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh");
+        verify(auditService).record(eq(user), eq(AuthEventType.TOKEN_REFRESHED), isNull(), eq("ip"));
+    }
+
+    @Test
+    void logoutAuditsWhenSessionExisted() {
+        User user = new User("bob", "bob@example.com", "hash", Role.DOCTOR);
+        when(refreshTokenService.revoke("tok")).thenReturn(Optional.of(user));
+
+        authService.logout("tok", "ip");
+
+        verify(auditService).record(eq(user), eq(AuthEventType.LOGGED_OUT), isNull(), eq("ip"));
+    }
+
+    @Test
+    void logoutIsSilentWhenTokenUnknown() {
+        when(refreshTokenService.revoke("tok")).thenReturn(Optional.empty());
+
+        authService.logout("tok", "ip");
+
+        verify(auditService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    void logoutAllRevokesAndAudits() {
+        User user = new User("bob", "bob@example.com", "hash", Role.DOCTOR);
+        lenient().when(refreshTokenService.revokeAllForUser(any())).thenReturn(2);
+
+        authService.logoutAll(user, "ip");
+
+        verify(refreshTokenService).revokeAllForUser(user.getId());
+        verify(auditService).record(eq(user), eq(AuthEventType.LOGGED_OUT_ALL), isNull(), eq("ip"));
     }
 }

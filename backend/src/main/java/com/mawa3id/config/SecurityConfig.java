@@ -42,7 +42,14 @@ public class SecurityConfig {
                 })
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/register/**", "/api/auth/login").permitAll()
+                        // Unauthenticated auth flows: registration, login, refresh,
+                        // logout (bearer may be expired) and password reset. Verification
+                        // endpoints require an authenticated principal and stay protected.
+                        // Method-agnostic so a wrong verb resolves to 405 at the dispatcher
+                        // rather than a misleading 401.
+                        .requestMatchers("/api/auth/register/**", "/api/auth/login",
+                                "/api/auth/refresh", "/api/auth/logout",
+                                "/api/auth/password/forgot", "/api/auth/password/reset").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/specialties/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/doctors/**").permitAll()
                         // Donations: starting a donation and the Stripe webhook are public

@@ -32,13 +32,13 @@ class AppUserDetailsServiceTest {
     private AppUserDetailsService service;
 
     @Test
-    void loadsExistingUserByEmailWithRoleAuthority() {
-        User user = new User("alice@example.com", "hash", Role.PATIENT);
-        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+    void loadsExistingUserByUsernameWithRoleAuthority() {
+        User user = new User("alice", "alice@example.com", "hash", Role.PATIENT);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
 
-        UserDetails details = service.loadUserByUsername("alice@example.com");
+        UserDetails details = service.loadUserByUsername("alice");
 
-        assertThat(details.getUsername()).isEqualTo("alice@example.com");
+        assertThat(details.getUsername()).isEqualTo("alice");
         assertThat(details.getAuthorities())
                 .extracting(Object::toString)
                 .containsExactly("ROLE_PATIENT");
@@ -46,9 +46,9 @@ class AppUserDetailsServiceTest {
 
     @Test
     void throwsWhenUserMissing() {
-        when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.loadUserByUsername("ghost@example.com"))
+        assertThatThrownBy(() -> service.loadUserByUsername("ghost"))
                 .isInstanceOf(UsernameNotFoundException.class);
     }
 }
