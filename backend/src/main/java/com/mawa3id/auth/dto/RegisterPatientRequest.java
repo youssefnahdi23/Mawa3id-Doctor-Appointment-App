@@ -12,6 +12,8 @@ public record RegisterPatientRequest(
         @NotBlank @Email String email,
         @NotBlank @Size(min = 8, max = 100) String password,
         @NotBlank @Size(max = 200) String fullName,
-        @NotNull @Past LocalDate dateOfBirth
+        @NotNull @Past LocalDate dateOfBirth,
+        // Optional: a chosen handle; blank/absent falls back to a generated one.
+        @Size(max = 30) String username
 ) {
 }

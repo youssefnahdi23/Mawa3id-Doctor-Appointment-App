@@ -78,7 +78,12 @@ class AuthServiceTest {
     }
 
     private RegisterPatientRequest patientRequest(String email) {
-        return new RegisterPatientRequest(email, "password123", "Alice Doe", LocalDate.of(1990, 5, 20));
+        return patientRequest(email, null);
+    }
+
+    private RegisterPatientRequest patientRequest(String email, String username) {
+        return new RegisterPatientRequest(email, "password123", "Alice Doe",
+                LocalDate.of(1990, 5, 20), username);
     }
 
     /** Persisted users always have an id; the token claim map rejects null values. */
@@ -138,6 +143,45 @@ class AuthServiceTest {
         AuthResponse response = authService.registerPatient(patientRequest("alice@example.com"), null, null);
 
         assertThat(response.username()).isEqualTo("alice.2");
+    }
+
+    @Test
+    void registerPatientWithChosenUsernameNormalizesAndUsesIt() {
+        when(contactService.isEmailTaken(anyString())).thenReturn(false);
+        when(userRepository.existsByUsername("cool.doc")).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("hash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> withId(inv.getArgument(0), 1L));
+        when(patientService.generateUniquePatientCode()).thenReturn("MW-ABC234");
+        stubTokenIssuance();
+
+        AuthResponse response =
+                authService.registerPatient(patientRequest("alice@example.com", "Cool.Doc"), null, null);
+
+        assertThat(response.username()).isEqualTo("cool.doc");
+        verify(userRepository, never()).existsByUsername("alice");
+    }
+
+    @Test
+    void registerPatientWithTakenUsernameThrowsConflict() {
+        when(contactService.isEmailTaken(anyString())).thenReturn(false);
+        when(userRepository.existsByUsername("taken")).thenReturn(true);
+
+        assertThatThrownBy(() ->
+                authService.registerPatient(patientRequest("alice@example.com", "taken"), null, null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.CONFLICT));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void registerPatientWithMalformedUsernameThrowsBadRequest() {
+        when(contactService.isEmailTaken(anyString())).thenReturn(false);
+
+        assertThatThrownBy(() ->
+                authService.registerPatient(patientRequest("alice@example.com", "no spaces!"), null, null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verify(userRepository, never()).save(any());
     }
 
     @Test

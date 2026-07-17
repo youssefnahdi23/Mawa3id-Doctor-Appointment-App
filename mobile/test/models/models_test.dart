@@ -41,11 +41,26 @@ void main() {
   });
 
   test('MeResponse.fromJson', () {
-    final me = MeResponse.fromJson(
-        {'userId': 9, 'username': 'amal', 'email': 'doc@x.y', 'role': 'DOCTOR'});
+    final me = MeResponse.fromJson({
+      'userId': 9,
+      'username': 'amal',
+      'email': 'doc@x.y',
+      'role': 'DOCTOR',
+      'emailVerified': true,
+      'phoneVerified': false,
+    });
     expect(me.userId, 9);
     expect(me.username, 'amal');
     expect(me.role, UserRole.doctor);
+    expect(me.emailVerified, isTrue);
+    expect(me.phoneVerified, isFalse);
+  });
+
+  test('MeResponse.fromJson defaults verification flags to false', () {
+    final me = MeResponse.fromJson(
+        {'userId': 9, 'username': 'amal', 'email': 'doc@x.y', 'role': 'DOCTOR'});
+    expect(me.emailVerified, isFalse);
+    expect(me.phoneVerified, isFalse);
   });
 
   test('SpecialtyResponse.fromJson with null description', () {

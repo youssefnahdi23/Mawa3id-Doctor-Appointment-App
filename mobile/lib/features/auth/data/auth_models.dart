@@ -49,6 +49,8 @@ class MeResponse {
     required this.username,
     required this.email,
     required this.role,
+    this.emailVerified = false,
+    this.phoneVerified = false,
   });
 
   factory MeResponse.fromJson(Map<String, dynamic> json) =>
@@ -58,4 +60,10 @@ class MeResponse {
   final String username;
   final String? email;
   final UserRole role;
+
+  /// Contact-verification state; defaults to false so older backends parse.
+  @JsonKey(defaultValue: false)
+  final bool emailVerified;
+  @JsonKey(defaultValue: false)
+  final bool phoneVerified;
 }

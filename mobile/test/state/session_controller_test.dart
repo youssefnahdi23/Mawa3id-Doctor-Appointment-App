@@ -88,6 +88,23 @@ void main() {
     expect(session.role, UserRole.patient);
   });
 
+  test('session carries verification flags from /me', () async {
+    when(() => storage.read()).thenAnswer((_) async => _stored());
+    when(() => authRepository.me()).thenAnswer((_) async => const MeResponse(
+          userId: 7,
+          username: 'sami',
+          email: 'a@b.c',
+          role: UserRole.patient,
+          emailVerified: true,
+          phoneVerified: false,
+        ));
+
+    final session = await container.read(sessionControllerProvider.future);
+
+    expect(session!.emailVerified, isTrue);
+    expect(session.phoneVerified, isFalse);
+  });
+
   test('token rejected by /auth/me → cleared and logged out', () async {
     when(() => storage.read()).thenAnswer((_) async => _stored());
     when(() => authRepository.me()).thenThrow(
@@ -144,6 +161,34 @@ void main() {
     await container.read(sessionControllerProvider.future);
 
     await container.read(sessionControllerProvider.notifier).logout();
+
+    expect(container.read(sessionControllerProvider).value, isNull);
+    verify(() => storage.clear()).called(1);
+  });
+
+  test('logoutAll revokes server-side then clears storage and state', () async {
+    when(() => storage.read()).thenAnswer((_) async => _stored());
+    when(() => authRepository.me()).thenAnswer((_) async => const MeResponse(
+        userId: 7, username: 'sami', email: 'a@b.c', role: UserRole.patient));
+    when(() => authRepository.logoutAll()).thenAnswer((_) async {});
+    await container.read(sessionControllerProvider.future);
+
+    await container.read(sessionControllerProvider.notifier).logoutAll();
+
+    expect(container.read(sessionControllerProvider).value, isNull);
+    verify(() => authRepository.logoutAll()).called(1);
+    verify(() => storage.clear()).called(1);
+  });
+
+  test('logoutAll still clears locally when the server call fails', () async {
+    when(() => storage.read()).thenAnswer((_) async => _stored());
+    when(() => authRepository.me()).thenAnswer((_) async => const MeResponse(
+        userId: 7, username: 'sami', email: 'a@b.c', role: UserRole.patient));
+    when(() => authRepository.logoutAll())
+        .thenThrow(const ApiException(kind: ApiErrorKind.network));
+    await container.read(sessionControllerProvider.future);
+
+    await container.read(sessionControllerProvider.notifier).logoutAll();
 
     expect(container.read(sessionControllerProvider).value, isNull);
     verify(() => storage.clear()).called(1);

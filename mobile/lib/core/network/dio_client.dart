@@ -66,8 +66,11 @@ class AuthInterceptor extends Interceptor {
     '/api/auth/password/reset',
   ];
 
+  /// Matches an anonymous path exactly or as a parent segment (so
+  /// `/api/auth/register/patient` counts, but `/api/auth/logout-all` — which
+  /// needs a bearer — does not match `/api/auth/logout`).
   static bool _isAnonymous(String path) =>
-      _anonymousPaths.any(path.startsWith);
+      _anonymousPaths.any((p) => path == p || path.startsWith('$p/'));
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {

@@ -13,7 +13,9 @@ import com.mawa3id.auth.dto.RegisterPatientRequest;
 import com.mawa3id.auth.dto.ResetPasswordRequest;
 import com.mawa3id.auth.dto.VerifyEmailConfirmRequest;
 import com.mawa3id.auth.dto.VerifyPhoneConfirmRequest;
+import com.mawa3id.auth.contact.ContactService;
 import com.mawa3id.security.AppUserDetails;
+import com.mawa3id.user.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -32,12 +34,14 @@ public class AuthController {
     private final AuthService authService;
     private final VerificationService verificationService;
     private final PasswordResetService passwordResetService;
+    private final ContactService contactService;
 
     public AuthController(AuthService authService, VerificationService verificationService,
-                          PasswordResetService passwordResetService) {
+                          PasswordResetService passwordResetService, ContactService contactService) {
         this.authService = authService;
         this.verificationService = verificationService;
         this.passwordResetService = passwordResetService;
+        this.contactService = contactService;
     }
 
     @PostMapping("/register/patient")
@@ -78,7 +82,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public MeResponse me(@AuthenticationPrincipal AppUserDetails principal) {
-        return MeResponse.from(principal.getUser());
+        User user = principal.getUser();
+        return MeResponse.of(user, contactService.hasVerifiedEmail(user),
+                contactService.hasVerifiedPhone(user));
     }
 
     @PostMapping("/verify/email/request")

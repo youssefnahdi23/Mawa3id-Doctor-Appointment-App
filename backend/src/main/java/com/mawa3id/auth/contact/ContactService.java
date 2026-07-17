@@ -64,6 +64,18 @@ public class ContactService {
         return contacts.findByUserIdAndTypeAndPrimaryTrue(user.getId(), ContactType.EMAIL);
     }
 
+    /** True if the user's primary email contact has been verified. */
+    @Transactional(readOnly = true)
+    public boolean hasVerifiedEmail(User user) {
+        return primaryEmail(user).map(UserContact::isVerified).orElse(false);
+    }
+
+    /** True if the user has any verified phone contact. */
+    @Transactional(readOnly = true)
+    public boolean hasVerifiedPhone(User user) {
+        return contacts.existsByUserIdAndTypeAndVerifiedAtNotNull(user.getId(), ContactType.PHONE);
+    }
+
     /**
      * Add (or return the existing) phone contact for a user. Rejects a phone already
      * verified by a different account so numbers are not silently shared.

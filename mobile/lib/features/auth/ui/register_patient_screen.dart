@@ -24,6 +24,7 @@ class _RegisterPatientScreenState
   final _fullName = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _username = TextEditingController();
   DateTime? _dateOfBirth;
   String? _error;
   Map<String, String> _fieldErrors = const {};
@@ -34,6 +35,7 @@ class _RegisterPatientScreenState
     _fullName.dispose();
     _email.dispose();
     _password.dispose();
+    _username.dispose();
     super.dispose();
   }
 
@@ -59,21 +61,23 @@ class _RegisterPatientScreenState
       _submitting = true;
       _error = null;
     });
+    final l10n = context.l10n;
     try {
       final auth = await ref.read(authRepositoryProvider).registerPatient(
             email: _email.text.trim(),
             password: _password.text,
             fullName: _fullName.text.trim(),
             dateOfBirth: _dateOfBirth!,
+            username: _username.text.trim(),
           );
       await ref.read(sessionControllerProvider.notifier).signIn(auth);
     } on ApiException catch (e) {
       if (!mounted) return;
+      final fieldErrors = usernameConflictErrors(e, l10n);
       setState(() {
-        _fieldErrors = e.fieldErrors;
-        _error = e.fieldErrors.isEmpty
-            ? localizedErrorMessage(context, e)
-            : null;
+        _fieldErrors = fieldErrors;
+        _error =
+            fieldErrors.isEmpty ? localizedErrorMessage(context, e) : null;
       });
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -119,6 +123,15 @@ class _RegisterPatientScreenState
                         value == null || !value.contains('@')
                             ? l10n.validationEmail
                             : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _username,
+                    decoration: InputDecoration(
+                      labelText: l10n.usernameOptional,
+                      helperText: l10n.usernameHelp,
+                    ),
+                    forceErrorText: _fieldErrors['username'],
                   ),
                   const SizedBox(height: 12),
                   TextFormField(

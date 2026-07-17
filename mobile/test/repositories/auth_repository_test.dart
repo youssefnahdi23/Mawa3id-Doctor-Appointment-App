@@ -74,6 +74,38 @@ void main() {
     expect((captured[1] as Map)['dateOfBirth'], '1995-03-07');
   });
 
+  test('registerPatient includes username when provided', () async {
+    stubPost();
+
+    await repository.registerPatient(
+      email: 'patient@example.com',
+      password: 'password123',
+      fullName: 'Sami Ben',
+      dateOfBirth: DateTime(1995, 3, 7),
+      username: 'sami.b',
+    );
+
+    final captured = verify(() => dio.post<Map<String, dynamic>>(
+        captureAny(), data: captureAny(named: 'data'))).captured;
+    expect((captured[1] as Map)['username'], 'sami.b');
+  });
+
+  test('registerPatient omits an empty username', () async {
+    stubPost();
+
+    await repository.registerPatient(
+      email: 'patient@example.com',
+      password: 'password123',
+      fullName: 'Sami Ben',
+      dateOfBirth: DateTime(1995, 3, 7),
+      username: '',
+    );
+
+    final captured = verify(() => dio.post<Map<String, dynamic>>(
+        captureAny(), data: captureAny(named: 'data'))).captured;
+    expect((captured[1] as Map).containsKey('username'), isFalse);
+  });
+
   test('registerDoctor omits empty optional fields', () async {
     when(() => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')))
         .thenAnswer((_) async => _ok({..._authJson, 'role': 'DOCTOR'}));
@@ -97,20 +129,32 @@ void main() {
     expect(body.containsKey('phone'), isFalse);
   });
 
-  test('me() reads /api/auth/me including username', () async {
+  test('me() reads /api/auth/me including username and verification', () async {
     when(() => dio.get<Map<String, dynamic>>(any())).thenAnswer((_) async =>
         _ok({
           'userId': 1,
           'username': 'sami',
           'email': 'patient@example.com',
-          'role': 'PATIENT'
+          'role': 'PATIENT',
+          'emailVerified': true,
+          'phoneVerified': false,
         }));
 
     final me = await repository.me();
 
     expect(me.role, UserRole.patient);
     expect(me.username, 'sami');
+    expect(me.emailVerified, isTrue);
+    expect(me.phoneVerified, isFalse);
     verify(() => dio.get<Map<String, dynamic>>('/api/auth/me')).called(1);
+  });
+
+  test('logoutAll posts to /api/auth/logout-all with no body', () async {
+    stubVoidPost();
+
+    await repository.logoutAll();
+
+    verify(() => dio.post<void>('/api/auth/logout-all')).called(1);
   });
 
   test('forgotPassword posts the identifier', () async {

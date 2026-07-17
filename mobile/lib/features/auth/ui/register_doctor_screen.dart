@@ -23,6 +23,7 @@ class _RegisterDoctorScreenState extends ConsumerState<RegisterDoctorScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _username = TextEditingController();
   final _cabinetAddress = TextEditingController();
   final _phone = TextEditingController();
   int? _specialtyId;
@@ -35,6 +36,7 @@ class _RegisterDoctorScreenState extends ConsumerState<RegisterDoctorScreen> {
     _name.dispose();
     _email.dispose();
     _password.dispose();
+    _username.dispose();
     _cabinetAddress.dispose();
     _phone.dispose();
     super.dispose();
@@ -47,6 +49,7 @@ class _RegisterDoctorScreenState extends ConsumerState<RegisterDoctorScreen> {
       _submitting = true;
       _error = null;
     });
+    final l10n = context.l10n;
     try {
       final auth = await ref.read(authRepositoryProvider).registerDoctor(
             email: _email.text.trim(),
@@ -55,15 +58,16 @@ class _RegisterDoctorScreenState extends ConsumerState<RegisterDoctorScreen> {
             specialtyId: _specialtyId!,
             cabinetAddress: _cabinetAddress.text.trim(),
             phone: _phone.text.trim(),
+            username: _username.text.trim(),
           );
       await ref.read(sessionControllerProvider.notifier).signIn(auth);
     } on ApiException catch (e) {
       if (!mounted) return;
+      final fieldErrors = usernameConflictErrors(e, l10n);
       setState(() {
-        _fieldErrors = e.fieldErrors;
-        _error = e.fieldErrors.isEmpty
-            ? localizedErrorMessage(context, e)
-            : null;
+        _fieldErrors = fieldErrors;
+        _error =
+            fieldErrors.isEmpty ? localizedErrorMessage(context, e) : null;
       });
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -151,6 +155,15 @@ class _RegisterDoctorScreenState extends ConsumerState<RegisterDoctorScreen> {
                     validator: (value) => value == null || value.length < 8
                         ? l10n.validationPassword
                         : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _username,
+                    decoration: InputDecoration(
+                      labelText: l10n.usernameOptional,
+                      helperText: l10n.usernameHelp,
+                    ),
+                    forceErrorText: _fieldErrors['username'],
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
