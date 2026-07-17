@@ -24,6 +24,7 @@ final patientTabs = [
       icon: Icons.notifications,
       label: (l10n) => l10n.tabNotifications,
       showUnreadBadge: true),
+  ShellTab(icon: Icons.person, label: (l10n) => l10n.tabProfile),
 ];
 
 final doctorTabs = [
@@ -33,6 +34,7 @@ final doctorTabs = [
       icon: Icons.notifications,
       label: (l10n) => l10n.tabNotifications,
       showUnreadBadge: true),
+  ShellTab(icon: Icons.person, label: (l10n) => l10n.tabProfile),
 ];
 
 /// Bottom-tab scaffold for both roles; only the tab set differs.

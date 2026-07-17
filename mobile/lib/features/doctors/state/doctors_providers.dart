@@ -7,6 +7,10 @@ import '../data/doctor_repository.dart';
 final specialtiesProvider = FutureProvider<List<SpecialtyResponse>>(
     (ref) => ref.watch(doctorRepositoryProvider).specialties());
 
+/// The signed-in doctor's own profile, for the profile editor.
+final myDoctorProfileProvider = FutureProvider.autoDispose<DoctorResponse>(
+    (ref) => ref.watch(doctorRepositoryProvider).me());
+
 final doctorDetailProvider = FutureProvider.family<DoctorResponse, int>(
     (ref, doctorId) => ref.watch(doctorRepositoryProvider).byId(doctorId));
 

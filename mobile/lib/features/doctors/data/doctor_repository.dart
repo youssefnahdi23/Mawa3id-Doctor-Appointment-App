@@ -52,6 +52,47 @@ class DoctorRepository {
     });
   }
 
+  /// The signed-in doctor's own profile.
+  Future<DoctorResponse> me() {
+    return apiCall(() async {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/api/doctors/me');
+      return DoctorResponse.fromJson(response.data!);
+    });
+  }
+
+  /// Update the signed-in doctor's profile. `name` is required; the rest are
+  /// sent only when provided so blanks don't clobber unless intended.
+  Future<DoctorResponse> updateMe({
+    required String name,
+    int? specialtyId,
+    String? cabinetAddress,
+    String? workingHours,
+    String? phone,
+    String? bio,
+    AcceptanceMode? acceptanceMode,
+    int? slotDurationMinutes,
+  }) {
+    return apiCall(() async {
+      final response = await _dio.put<Map<String, dynamic>>(
+        '/api/doctors/me',
+        data: {
+          'name': name,
+          if (specialtyId != null) 'specialtyId': specialtyId,
+          if (cabinetAddress != null) 'cabinetAddress': cabinetAddress,
+          if (workingHours != null) 'workingHours': workingHours,
+          if (phone != null) 'phone': phone,
+          if (bio != null) 'bio': bio,
+          if (acceptanceMode != null)
+            'acceptanceMode': acceptanceMode.wireName,
+          if (slotDurationMinutes != null)
+            'slotDurationMinutes': slotDurationMinutes,
+        },
+      );
+      return DoctorResponse.fromJson(response.data!);
+    });
+  }
+
   Future<PageResponse<ReviewResponse>> reviews(
     int doctorId, {
     int page = 0,

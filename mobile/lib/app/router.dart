@@ -17,7 +17,9 @@ import '../features/auth/ui/verify_phone_screen.dart';
 import '../features/availability/ui/availability_editor_screen.dart';
 import '../features/doctors/ui/doctor_detail_screen.dart';
 import '../features/doctors/ui/doctor_list_screen.dart';
+import '../features/doctors/ui/doctor_profile_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
+import '../features/patient/ui/patient_profile_screen.dart';
 import '../features/records/ui/patient_records_screen.dart';
 import '../features/records/ui/record_detail_screen.dart';
 import '../features/records/ui/record_form_screen.dart';
@@ -136,6 +138,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/p/notifications',
                 builder: (_, __) => const NotificationsScreen()),
           ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/p/profile',
+                builder: (_, __) => const PatientProfileScreen()),
+          ]),
         ],
       ),
       StatefulShellRoute.indexedStack(
@@ -164,6 +171,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(
                 path: '/d/notifications',
                 builder: (_, __) => const NotificationsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/d/profile',
+                builder: (_, __) => const DoctorProfileScreen()),
           ]),
         ],
       ),
