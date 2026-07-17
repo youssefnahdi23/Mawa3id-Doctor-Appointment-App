@@ -31,6 +31,7 @@ class AuthRepository {
     required String password,
     required String fullName,
     required DateTime dateOfBirth,
+    String? username,
   }) {
     return apiCall(() async {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -40,6 +41,7 @@ class AuthRepository {
           'password': password,
           'fullName': fullName,
           'dateOfBirth': formatIsoDate(dateOfBirth),
+          if (username != null && username.isNotEmpty) 'username': username,
         },
       );
       return AuthResponse.fromJson(response.data!);
@@ -53,6 +55,7 @@ class AuthRepository {
     required int specialtyId,
     String? cabinetAddress,
     String? phone,
+    String? username,
   }) {
     return apiCall(() async {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -65,6 +68,7 @@ class AuthRepository {
           if (cabinetAddress != null && cabinetAddress.isNotEmpty)
             'cabinetAddress': cabinetAddress,
           if (phone != null && phone.isNotEmpty) 'phone': phone,
+          if (username != null && username.isNotEmpty) 'username': username,
         },
       );
       return AuthResponse.fromJson(response.data!);
@@ -85,6 +89,13 @@ class AuthRepository {
         '/api/auth/logout',
         data: {'refreshToken': refreshToken},
       );
+    });
+  }
+
+  /// Revoke every refresh session for the current user (sign out everywhere).
+  Future<void> logoutAll() {
+    return apiCall(() async {
+      await _dio.post<void>('/api/auth/logout-all');
     });
   }
 

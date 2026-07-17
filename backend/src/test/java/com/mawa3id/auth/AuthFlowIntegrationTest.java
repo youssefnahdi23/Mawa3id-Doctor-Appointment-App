@@ -64,11 +64,13 @@ class AuthFlowIntegrationTest {
         mockMvc.perform(get("/api/auth/me"))
                 .andExpect(status().isUnauthorized());
 
-        // With token -> 200 and correct identity
+        // With token -> 200 and correct identity; a fresh account is unverified
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.role").value("PATIENT"));
+                .andExpect(jsonPath("$.role").value("PATIENT"))
+                .andExpect(jsonPath("$.emailVerified").value(false))
+                .andExpect(jsonPath("$.phoneVerified").value(false));
 
         // Patient profile has an auto-generated code
         mockMvc.perform(get("/api/patients/me").header("Authorization", "Bearer " + token))
@@ -107,6 +109,34 @@ class AuthFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identifier\":\"bob@example.com\",\"password\":\"wrongpass\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void chosenUsernameIsUsedAndCollisionIsConflict() throws Exception {
+        String body = """
+                {"email":"carol@example.com","password":"password123",
+                 "fullName":"Carol Roe","dateOfBirth":"1991-02-02","username":"Carol.MD"}
+                """;
+        // Chosen handle is normalized (lowercased) and becomes the login identity.
+        mockMvc.perform(post("/api/auth/register/patient")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value("carol.md"));
+
+        // Login by the chosen username works.
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"carol.md\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+
+        // A second, different account requesting the same handle is a conflict.
+        String clash = """
+                {"email":"carol2@example.com","password":"password123",
+                 "fullName":"Carol Two","dateOfBirth":"1992-03-03","username":"carol.md"}
+                """;
+        mockMvc.perform(post("/api/auth/register/patient")
+                        .contentType(MediaType.APPLICATION_JSON).content(clash))
+                .andExpect(status().isConflict());
     }
 
     @Test

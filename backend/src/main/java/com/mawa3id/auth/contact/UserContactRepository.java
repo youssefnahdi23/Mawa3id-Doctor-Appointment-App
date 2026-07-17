@@ -14,4 +14,6 @@ public interface UserContactRepository extends JpaRepository<UserContact, Long> 
     List<UserContact> findByUserId(Long userId);
 
     Optional<UserContact> findByUserIdAndTypeAndPrimaryTrue(Long userId, ContactType type);
+
+    boolean existsByUserIdAndTypeAndVerifiedAtNotNull(Long userId, ContactType type);
 }

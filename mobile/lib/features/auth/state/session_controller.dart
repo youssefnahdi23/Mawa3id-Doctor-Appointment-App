@@ -13,6 +13,8 @@ class Session {
     required this.username,
     required this.email,
     required this.role,
+    this.emailVerified = false,
+    this.phoneVerified = false,
   });
 
   final int userId;
@@ -23,6 +25,11 @@ class Session {
   /// Optional: phone-only / social accounts have no email.
   final String? email;
   final UserRole role;
+
+  /// Contact-verification state, sourced from `/me`. Defaults to false when the
+  /// session is restored offline without a fresh `/me` round-trip.
+  final bool emailVerified;
+  final bool phoneVerified;
 }
 
 final sessionControllerProvider =
@@ -54,6 +61,8 @@ class SessionController extends AsyncNotifier<Session?> {
         username: me.username,
         email: me.email,
         role: me.role,
+        emailVerified: me.emailVerified,
+        phoneVerified: me.phoneVerified,
       );
     } on ApiException catch (e) {
       if (e.kind == ApiErrorKind.unauthorized) {
@@ -97,8 +106,7 @@ class SessionController extends AsyncNotifier<Session?> {
   }
 
   Future<void> logout() async {
-    final storage = ref.read(tokenStorageProvider);
-    final refreshToken = storage.cachedRefreshToken;
+    final refreshToken = ref.read(tokenStorageProvider).cachedRefreshToken;
     // Best-effort server-side revocation; ignore failures (we log out locally regardless).
     if (refreshToken != null) {
       try {
@@ -107,7 +115,21 @@ class SessionController extends AsyncNotifier<Session?> {
         // ignore
       }
     }
-    await storage.clear();
+    await _clearLocally();
+  }
+
+  /// Revoke every session for this account server-side, then log out locally.
+  Future<void> logoutAll() async {
+    try {
+      await ref.read(authRepositoryProvider).logoutAll();
+    } on ApiException {
+      // ignore — we still clear locally so the device is signed out
+    }
+    await _clearLocally();
+  }
+
+  Future<void> _clearLocally() async {
+    await ref.read(tokenStorageProvider).clear();
     state = const AsyncData(null);
   }
 }

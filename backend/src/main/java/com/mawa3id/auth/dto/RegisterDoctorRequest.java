@@ -12,6 +12,8 @@ public record RegisterDoctorRequest(
         @NotNull Long specialtyId,
         @Size(max = 300) String cabinetAddress,
         @Size(max = 500) String workingHours,
-        @Size(max = 40) String phone
+        @Size(max = 40) String phone,
+        // Optional: a chosen handle; blank/absent falls back to a generated one.
+        @Size(max = 30) String username
 ) {
 }

@@ -76,7 +76,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponse registerPatient(RegisterPatientRequest request, String userAgent, String ip) {
-        User user = createUser(request.email(), request.password(), Role.PATIENT);
+        User user = createUser(request.email(), request.username(), request.password(), Role.PATIENT);
         Patient patient = new Patient(user, request.fullName(), request.dateOfBirth(),
                 patientService.generateUniquePatientCode());
         patientRepository.save(patient);
@@ -87,7 +87,7 @@ public class AuthService {
     @Transactional
     public AuthResponse registerDoctor(RegisterDoctorRequest request, String userAgent, String ip) {
         Specialty specialty = doctorService.resolveSpecialty(request.specialtyId());
-        User user = createUser(request.email(), request.password(), Role.DOCTOR);
+        User user = createUser(request.email(), request.username(), request.password(), Role.DOCTOR);
         Doctor doctor = new Doctor(user, request.name(), specialty, request.cabinetAddress(),
                 request.workingHours(), request.phone());
         doctorRepository.save(doctor);
@@ -153,17 +153,36 @@ public class AuthService {
         auditService.record(user, AuthEventType.LOGGED_OUT_ALL, null, ip);
     }
 
-    private User createUser(String email, String rawPassword, Role role) {
+    private User createUser(String email, String requestedUsername, String rawPassword, Role role) {
         String normalizedEmail = Identifiers.normalizeEmail(email);
         if (contactService.isEmailTaken(normalizedEmail)) {
             throw new ApiException(HttpStatus.CONFLICT, "Email already registered");
         }
-        User user = new User(generateUsername(normalizedEmail), normalizedEmail,
-                passwordEncoder.encode(rawPassword), role);
+        String username = resolveUsername(requestedUsername, normalizedEmail);
+        User user = new User(username, normalizedEmail, passwordEncoder.encode(rawPassword), role);
         user.setPasswordChangedAt(clock.instant());
         userRepository.save(user);
         contactService.createPrimaryEmail(user, email, normalizedEmail);
         return user;
+    }
+
+    /**
+     * Use the caller's chosen handle when provided (validated + unique), otherwise derive
+     * one from the email. Blank/absent means "generate for me".
+     */
+    private String resolveUsername(String requested, String normalizedEmail) {
+        if (requested == null || requested.isBlank()) {
+            return generateUsername(normalizedEmail);
+        }
+        if (!Identifiers.isValidUsername(requested)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Username must be 3-30 characters using letters, digits, dot, dash or underscore");
+        }
+        String normalized = Identifiers.normalizeUsername(requested);
+        if (userRepository.existsByUsername(normalized)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Username already taken");
+        }
+        return normalized;
     }
 
     /** Derive a unique username from the email local part, suffixing on collision. */
