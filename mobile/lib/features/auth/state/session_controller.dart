@@ -10,12 +10,18 @@ import '../data/auth_repository.dart';
 class Session {
   const Session({
     required this.userId,
+    required this.username,
     required this.email,
     required this.role,
   });
 
   final int userId;
-  final String email;
+
+  /// Stable display identity; always present.
+  final String username;
+
+  /// Optional: phone-only / social accounts have no email.
+  final String? email;
   final UserRole role;
 }
 
@@ -36,22 +42,30 @@ class SessionController extends AsyncNotifier<Session?> {
     final storage = ref.watch(tokenStorageProvider);
     final stored = await storage.read();
     if (stored == null) return null;
-    if (stored.isExpired) {
+    if (stored.isExpired && stored.refreshToken == null) {
+      // No way to renew an expired session without a refresh token.
       await storage.clear();
       return null;
     }
     try {
       final me = await ref.read(authRepositoryProvider).me();
-      return Session(userId: me.userId, email: me.email, role: me.role);
+      return Session(
+        userId: me.userId,
+        username: me.username,
+        email: me.email,
+        role: me.role,
+      );
     } on ApiException catch (e) {
       if (e.kind == ApiErrorKind.unauthorized) {
+        // A 401 here means refresh already failed in the interceptor.
         await storage.clear();
         return null;
       }
-      // Backend unreachable: trust the stored, unexpired session so the app
-      // still opens; the next 401 forces a logout anyway.
+      // Backend unreachable: trust the stored session so the app still opens;
+      // the next 401 triggers a refresh, and a failed refresh forces logout.
       return Session(
         userId: stored.userId,
+        username: stored.username,
         email: stored.email,
         role: stored.role == 'DOCTOR' ? UserRole.doctor : UserRole.patient,
       );
@@ -63,7 +77,9 @@ class SessionController extends AsyncNotifier<Session?> {
     await ref.read(tokenStorageProvider).save(
           StoredSession(
             token: auth.token,
+            refreshToken: auth.refreshToken,
             userId: auth.userId,
+            username: auth.username,
             email: auth.email,
             role: auth.role == UserRole.doctor ? 'DOCTOR' : 'PATIENT',
             expiresAt: DateTime.now()
@@ -71,12 +87,27 @@ class SessionController extends AsyncNotifier<Session?> {
           ),
         );
     state = AsyncData(
-      Session(userId: auth.userId, email: auth.email, role: auth.role),
+      Session(
+        userId: auth.userId,
+        username: auth.username,
+        email: auth.email,
+        role: auth.role,
+      ),
     );
   }
 
   Future<void> logout() async {
-    await ref.read(tokenStorageProvider).clear();
+    final storage = ref.read(tokenStorageProvider);
+    final refreshToken = storage.cachedRefreshToken;
+    // Best-effort server-side revocation; ignore failures (we log out locally regardless).
+    if (refreshToken != null) {
+      try {
+        await ref.read(authRepositoryProvider).logout(refreshToken);
+      } on ApiException {
+        // ignore
+      }
+    }
+    await storage.clear();
     state = const AsyncData(null);
   }
 }

@@ -21,8 +21,8 @@ class _FakeSessionController extends SessionController {
 void main() {
   late _MockNotificationRepository repository;
 
-  const session =
-      Session(userId: 7, email: 'a@b.c', role: UserRole.patient);
+  const session = Session(
+      userId: 7, username: 'sami', email: 'a@b.c', role: UserRole.patient);
 
   ProviderContainer buildContainer(Session? sessionValue) {
     final container = ProviderContainer(overrides: [
