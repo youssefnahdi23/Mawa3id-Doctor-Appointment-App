@@ -38,7 +38,7 @@ flutter:
 # logo lands, then rerun: dart run flutter_launcher_icons && dart run flutter_native_splash:create
 flutter_launcher_icons:
   android: true
-  ios: false # iOS project is scaffolded in Phase 2; enable then
+  ios: true
   image_path: "assets/icon/app_icon.png"
   adaptive_icon_background: "#1E8E5A"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
