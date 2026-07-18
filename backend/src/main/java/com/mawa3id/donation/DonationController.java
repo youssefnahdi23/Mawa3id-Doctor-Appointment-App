@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,6 +47,17 @@ public class DonationController {
     public void webhook(@RequestBody String payload,
                         @RequestHeader(name = "Stripe-Signature", required = false) String signature) {
         donationService.handleWebhook(payload, signature);
+    }
+
+    /**
+     * Konnect webhook callback ({@code GET ...?payment_ref=}). Public; Konnect does not
+     * sign requests, so the server confirms the status against the Konnect API instead.
+     */
+    @GetMapping("/konnect/webhook")
+    @ResponseStatus(HttpStatus.OK)
+    public void konnectWebhook(
+            @RequestParam(name = "payment_ref", required = false) String paymentRef) {
+        donationService.handleKonnectWebhook(paymentRef);
     }
 
     /** The authenticated user's own donation history. */

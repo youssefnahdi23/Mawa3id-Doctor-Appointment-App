@@ -76,6 +76,20 @@ mawa3id:
       webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
       success-url: ${STRIPE_SUCCESS_URL:http://localhost:8080/donation/success}
       cancel-url: ${STRIPE_CANCEL_URL:http://localhost:8080/donation/cancel}
+    # Konnect (Tunisian aggregator: D17, Flouci wallet, local cards). The method is
+    # offered only when both the API key and receiver wallet id are provided.
+    konnect:
+      api-key: ${KONNECT_API_KEY:}
+      wallet-id: ${KONNECT_WALLET_ID:}
+      base-url: ${KONNECT_BASE_URL:https://api.konnect.network/api/v2}
+      currency: ${KONNECT_CURRENCY:tnd}
+      webhook-url: ${KONNECT_WEBHOOK_URL:}
+    # Manual bank transfer (RIB); surfaced to donors when the number is set.
+    rib:
+      account-holder: ${RIB_ACCOUNT_HOLDER:}
+      bank-name: ${RIB_BANK_NAME:}
+      number: ${RIB_NUMBER:}
+      currency: ${RIB_CURRENCY:tnd}
   clinic:
     # Single-region clinic time zone. All appointment times are clinic-local and every "now"
     # comparison (slot computation, bookability, reminders) is evaluated in this zone rather

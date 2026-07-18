@@ -3,6 +3,7 @@ import 'package:mawa3id/features/appointments/data/appointment_models.dart';
 import 'package:mawa3id/features/auth/data/auth_models.dart';
 import 'package:mawa3id/features/availability/data/availability_models.dart';
 import 'package:mawa3id/features/doctors/data/doctor_models.dart';
+import 'package:mawa3id/features/donations/data/donation_models.dart';
 import 'package:mawa3id/features/notifications/data/notification_models.dart';
 import 'package:mawa3id/features/patient/data/patient_models.dart';
 
@@ -84,6 +85,46 @@ void main() {
       'patientCode': 'MW-ABC234',
     });
     expect(noDob.dateOfBirth, isNull);
+  });
+
+  test('DonationConfig.fromJson defaults missing local-method fields', () {
+    final config = DonationConfig.fromJson({
+      'cardEnabled': true,
+      'currency': 'usd',
+      'minAmountMinor': 100,
+      'patreonUrl': '',
+    });
+    expect(config.cardEnabled, isTrue);
+    expect(config.konnectEnabled, isFalse);
+    expect(config.ribEnabled, isFalse);
+    expect(config.patreonEnabled, isFalse);
+    expect(config.noneAvailable, isFalse);
+  });
+
+  test('DonationConfig.noneAvailable when everything is off', () {
+    final config = DonationConfig.fromJson({
+      'cardEnabled': false,
+      'currency': 'usd',
+      'minAmountMinor': 100,
+      'patreonUrl': '',
+    });
+    expect(config.noneAvailable, isTrue);
+  });
+
+  test('Donation.fromJson parses enums and status', () {
+    final donation = Donation.fromJson({
+      'id': 3,
+      'amountMinor': 5000,
+      'currency': 'tnd',
+      'status': 'SUCCEEDED',
+      'provider': 'KONNECT',
+      'message': null,
+      'checkoutUrl': null,
+      'createdAt': '2026-07-19T10:00:00Z',
+    });
+    expect(donation.status, DonationStatus.succeeded);
+    expect(donation.provider, DonationProvider.konnect);
+    expect(donation.createdAt.isUtc, isTrue);
   });
 
   test('SpecialtyResponse.fromJson with null description', () {

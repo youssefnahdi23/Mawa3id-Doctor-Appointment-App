@@ -57,7 +57,8 @@ public class SecurityConfig {
                         // Donation history (/api/donations/me) stays authenticated by default.
                         .requestMatchers(org.springframework.http.HttpMethod.POST,
                                 "/api/donations", "/api/donations/webhook").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/donations/config").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                "/api/donations/config", "/api/donations/konnect/webhook").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/actuator/health", "/actuator/health/**").permitAll()
                         .anyRequest().authenticated())

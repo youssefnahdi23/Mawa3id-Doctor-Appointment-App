@@ -27,6 +27,7 @@ class DonationServiceTest {
     private DonationRepository donationRepository;
     private UserRepository userRepository;
     private PaymentGateway paymentGateway;
+    private KonnectGateway konnectGateway;
     private DonationProperties properties;
     private DonationService service;
 
@@ -35,20 +36,39 @@ class DonationServiceTest {
         donationRepository = mock(DonationRepository.class);
         userRepository = mock(UserRepository.class);
         paymentGateway = mock(PaymentGateway.class);
+        konnectGateway = mock(KonnectGateway.class);
         properties = new DonationProperties();
         properties.setEnabled(true);
         properties.setCurrency("usd");
         properties.setMinAmountMinor(100);
         properties.setPatreonUrl("https://patreon.com/mawa3id");
-        service = new DonationService(donationRepository, userRepository, paymentGateway, properties);
+        service = new DonationService(donationRepository, userRepository, paymentGateway,
+                konnectGateway, properties);
 
         when(donationRepository.save(any(Donation.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentGateway.createCheckoutSession(any()))
                 .thenReturn(new PaymentGateway.CheckoutSession("cs_1", "https://pay/cs_1"));
+        when(konnectGateway.createCheckoutSession(any()))
+                .thenReturn(new PaymentGateway.CheckoutSession("kref_1", "https://konnect/kref_1"));
+    }
+
+    private void configureKonnect() {
+        properties.getKonnect().setApiKey("key");
+        properties.getKonnect().setWalletId("wallet");
+    }
+
+    private void configureRib() {
+        properties.getRib().setAccountHolder("Mawa3id Association");
+        properties.getRib().setBankName("BIAT");
+        properties.getRib().setNumber("08 001 0000123456789 12");
     }
 
     private CreateDonationRequest request(long amount, String currency) {
-        return new CreateDonationRequest(amount, currency, "Sam", "Keep it up!");
+        return new CreateDonationRequest(amount, currency, "Sam", "Keep it up!", null);
+    }
+
+    private CreateDonationRequest requestFor(long amount, DonationProvider provider) {
+        return new CreateDonationRequest(amount, null, "Sam", "Keep it up!", provider);
     }
 
     @Test
@@ -107,6 +127,107 @@ class DonationServiceTest {
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(
                         org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    void konnectDonationRoutesToKonnectAndForcesTnd() {
+        configureKonnect();
+
+        DonationResponse response = service.create(null, requestFor(5000, DonationProvider.KONNECT));
+
+        assertThat(response.checkoutUrl()).isEqualTo("https://konnect/kref_1");
+        ArgumentCaptor<Donation> saved = ArgumentCaptor.forClass(Donation.class);
+        verify(donationRepository).save(saved.capture());
+        assertThat(saved.getValue().getProvider()).isEqualTo(DonationProvider.KONNECT);
+        assertThat(saved.getValue().getCurrency()).isEqualTo("tnd");
+        assertThat(saved.getValue().getProviderSessionId()).isEqualTo("kref_1");
+        verify(paymentGateway, never()).createCheckoutSession(any());
+    }
+
+    @Test
+    void konnectUnconfiguredIsUnavailable() {
+        assertThatThrownBy(() -> service.create(null, requestFor(5000, DonationProvider.KONNECT)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(
+                        org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE));
+        verify(donationRepository, never()).save(any());
+    }
+
+    @Test
+    void ribDonationIsRecordedPendingWithoutCheckout() {
+        configureRib();
+
+        DonationResponse response = service.create(null, requestFor(20000, DonationProvider.RIB));
+
+        assertThat(response.status()).isEqualTo(DonationStatus.PENDING);
+        assertThat(response.checkoutUrl()).isNull();
+        ArgumentCaptor<Donation> saved = ArgumentCaptor.forClass(Donation.class);
+        verify(donationRepository).save(saved.capture());
+        assertThat(saved.getValue().getProvider()).isEqualTo(DonationProvider.RIB);
+        assertThat(saved.getValue().getCurrency()).isEqualTo("tnd");
+        assertThat(saved.getValue().getProviderSessionId()).isNull();
+        verify(paymentGateway, never()).createCheckoutSession(any());
+        verify(konnectGateway, never()).createCheckoutSession(any());
+    }
+
+    @Test
+    void ribUnconfiguredIsUnavailable() {
+        assertThatThrownBy(() -> service.create(null, requestFor(20000, DonationProvider.RIB)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(
+                        org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    void konnectWebhookCompletedMarksSucceeded() {
+        configureKonnect();
+        Donation donation = new Donation(null, 5000, "tnd", DonationProvider.KONNECT, "Sam", null);
+        donation.attachSession("kref_1");
+        when(donationRepository.findByProviderSessionId("kref_1")).thenReturn(Optional.of(donation));
+        when(konnectGateway.fetchPaymentStatus("kref_1"))
+                .thenReturn(PaymentGateway.WebhookEvent.Type.COMPLETED);
+
+        service.handleKonnectWebhook("kref_1");
+
+        assertThat(donation.getStatus()).isEqualTo(DonationStatus.SUCCEEDED);
+        assertThat(donation.getProviderPaymentRef()).isEqualTo("kref_1");
+    }
+
+    @Test
+    void konnectWebhookStillPendingLeavesDonationPending() {
+        Donation donation = new Donation(null, 5000, "tnd", DonationProvider.KONNECT, "Sam", null);
+        donation.attachSession("kref_1");
+        when(donationRepository.findByProviderSessionId("kref_1")).thenReturn(Optional.of(donation));
+        when(konnectGateway.fetchPaymentStatus("kref_1"))
+                .thenReturn(PaymentGateway.WebhookEvent.Type.IGNORED);
+
+        service.handleKonnectWebhook("kref_1");
+
+        assertThat(donation.getStatus()).isEqualTo(DonationStatus.PENDING);
+    }
+
+    @Test
+    void konnectWebhookIgnoresUnknownRefAndBlank() {
+        when(donationRepository.findByProviderSessionId("nope")).thenReturn(Optional.empty());
+
+        service.handleKonnectWebhook("nope");
+        service.handleKonnectWebhook("");
+        service.handleKonnectWebhook(null);
+
+        verify(konnectGateway, never()).fetchPaymentStatus(any());
+    }
+
+    @Test
+    void konnectWebhookDoesNotTouchStripeDonations() {
+        // A Stripe donation whose session id somehow matches must not be re-verified via Konnect.
+        Donation donation = pending();
+        donation.attachSession("cs_1");
+        when(donationRepository.findByProviderSessionId("cs_1")).thenReturn(Optional.of(donation));
+
+        service.handleKonnectWebhook("cs_1");
+
+        assertThat(donation.getStatus()).isEqualTo(DonationStatus.PENDING);
+        verify(konnectGateway, never()).fetchPaymentStatus(any());
     }
 
     @Test
@@ -190,6 +311,36 @@ class DonationServiceTest {
         assertThat(config.currency()).isEqualTo("usd");
         assertThat(config.minAmountMinor()).isEqualTo(100);
         assertThat(config.patreonUrl()).isEqualTo("https://patreon.com/mawa3id");
+        // Unconfigured local methods stay hidden.
+        assertThat(config.konnectEnabled()).isFalse();
+        assertThat(config.ribNumber()).isEmpty();
+    }
+
+    @Test
+    void configSurfacesKonnectAndRibWhenConfigured() {
+        configureKonnect();
+        configureRib();
+
+        DonationConfigResponse config = service.config();
+
+        assertThat(config.konnectEnabled()).isTrue();
+        assertThat(config.konnectCurrency()).isEqualTo("tnd");
+        assertThat(config.ribAccountHolder()).isEqualTo("Mawa3id Association");
+        assertThat(config.ribBankName()).isEqualTo("BIAT");
+        assertThat(config.ribNumber()).isEqualTo("08 001 0000123456789 12");
+    }
+
+    @Test
+    void masterSwitchHidesKonnectAndRib() {
+        configureKonnect();
+        configureRib();
+        properties.setEnabled(false);
+
+        DonationConfigResponse config = service.config();
+
+        assertThat(config.cardEnabled()).isFalse();
+        assertThat(config.konnectEnabled()).isFalse();
+        assertThat(config.ribNumber()).isEmpty();
     }
 
     private Donation pending() {
