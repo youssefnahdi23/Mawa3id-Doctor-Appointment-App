@@ -1,0 +1,18 @@
+# Android release signing — TEMPLATE.
+# Copy to `android/key.properties` (gitignored) and fill in real values, then
+# `flutter build appbundle --release` will sign with your upload key.
+# key.properties, *.keystore and *.jks are gitignored — never commit them.
+#
+# 1) Generate an upload keystore (once), keeping a secure backup of the file
+#    AND the passwords (losing them complicates future app updates):
+#
+#    keytool -genkey -v -keystore upload-keystore.jks \
+#      -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# 2) Point storeFile at that file (absolute path, or relative to android/app).
+# 3) For CI (Phase 5), provide these values + the keystore (base64) as secrets.
+
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks
