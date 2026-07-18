@@ -18,6 +18,7 @@ import '../features/availability/ui/availability_editor_screen.dart';
 import '../features/doctors/ui/doctor_detail_screen.dart';
 import '../features/doctors/ui/doctor_list_screen.dart';
 import '../features/doctors/ui/doctor_profile_screen.dart';
+import '../features/donations/ui/donate_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
 import '../features/patient/ui/patient_profile_screen.dart';
 import '../features/records/ui/patient_records_screen.dart';
@@ -84,6 +85,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/verify/phone',
           builder: (_, __) => const VerifyPhoneScreen()),
+      GoRoute(path: '/donate', builder: (_, __) => const DonateScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) =>
             RoleShell(navigationShell: shell, tabs: patientTabs),

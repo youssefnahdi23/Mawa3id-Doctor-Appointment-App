@@ -28,6 +28,15 @@ mawa3id:
     # Card donations exercised via StubPaymentGateway (test profile). A Patreon URL is
     # set so the /api/donations/config test asserts a concrete value.
     patreon-url: https://patreon.com/mawa3id-test
+    # Konnect + RIB configured so the integration suite exercises the Tunisian methods
+    # end to end via StubKonnectGateway.
+    konnect:
+      api-key: test-konnect-key
+      wallet-id: test-wallet
+    rib:
+      account-holder: Mawa3id Association
+      bank-name: Test Bank
+      number: "08 001 0000123456789 12"
   notifications:
     reminder:
       # Off so the scheduled job never fires mid-test; reminder logic is driven directly
