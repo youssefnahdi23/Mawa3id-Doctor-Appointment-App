@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/l10n/error_l10n.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_view.dart';
+import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/session_actions.dart';
 import '../data/appointment_models.dart';
 import '../data/appointment_repository.dart';
@@ -54,15 +56,17 @@ class DoctorAppointmentsScreen extends ConsumerWidget {
           ),
           Expanded(
             child: listState.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const SkeletonList(),
               error: (error, _) => ErrorView(
                 error: error,
                 onRetry: () => ref.invalidate(doctorAppointmentsProvider),
               ),
               data: (data) {
                 if (data.items.isEmpty) {
-                  return Center(child: Text(l10n.noAppointments));
+                  return EmptyState(
+                    icon: Icons.event_busy,
+                    title: l10n.noAppointments,
+                  );
                 }
                 return RefreshIndicator(
                   onRefresh: () async =>
