@@ -28,6 +28,27 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   json_serializable: ^6.9.4
   mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
 
 flutter:
   generate: true
+
+# Placeholder brand mark (medical green + "M"); swap assets/icon/* when the real
+# logo lands, then rerun: dart run flutter_launcher_icons && dart run flutter_native_splash:create
+flutter_launcher_icons:
+  android: true
+  ios: false # iOS project is scaffolded in Phase 2; enable then
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#1E8E5A"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#1E8E5A"
+  color_dark: "#0B3D2A"
+  image: assets/icon/app_icon_foreground.png
+  android_12:
+    color: "#1E8E5A"
+    color_dark: "#0B3D2A"
+    image: assets/icon/app_icon_foreground.png

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/l10n.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_view.dart';
+import '../../../core/widgets/loading_skeleton.dart';
 import '../state/records_providers.dart';
 import 'record_widgets.dart';
 
@@ -18,14 +20,17 @@ class PatientRecordsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.myRecordsTitle)),
       body: listState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonList(),
         error: (error, _) => ErrorView(
           error: error,
           onRetry: () => ref.invalidate(patientRecordsProvider),
         ),
         data: (data) {
           if (data.items.isEmpty) {
-            return Center(child: Text(l10n.myRecordsEmpty));
+            return EmptyState(
+              icon: Icons.folder_open,
+              title: l10n.myRecordsEmpty,
+            );
           }
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(patientRecordsProvider),

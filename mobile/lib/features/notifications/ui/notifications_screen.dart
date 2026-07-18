@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/l10n.dart';
 import '../../../core/time/relative_time.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_view.dart';
+import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/session_actions.dart';
 import '../data/notification_models.dart';
 import '../state/notifications_controller.dart';
@@ -41,14 +43,17 @@ class NotificationsScreen extends ConsumerWidget {
         ],
       ),
       body: listState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonList(),
         error: (error, _) => ErrorView(
           error: error,
           onRetry: () => ref.invalidate(notificationsControllerProvider),
         ),
         data: (data) {
           if (data.items.isEmpty) {
-            return Center(child: Text(l10n.noNotifications));
+            return EmptyState(
+              icon: Icons.notifications_none,
+              title: l10n.noNotifications,
+            );
           }
           return RefreshIndicator(
             onRefresh: () async =>

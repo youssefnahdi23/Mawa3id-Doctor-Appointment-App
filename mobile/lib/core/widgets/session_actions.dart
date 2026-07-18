@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../l10n/l10n.dart';
 import '../l10n/locale_controller.dart';
+import '../theme/theme_controller.dart';
 
-/// AppBar actions shared by every signed-in screen: language picker, account
-/// (contact verification), and logout.
+/// AppBar actions shared by every signed-in screen: theme + language pickers,
+/// account (contact verification), and logout.
 List<Widget> sessionAppBarActions(BuildContext context, WidgetRef ref) => [
+      const ThemeMenuButton(),
       const LocaleMenuButton(),
       const AccountMenuButton(),
       IconButton(
@@ -18,6 +20,42 @@ List<Widget> sessionAppBarActions(BuildContext context, WidgetRef ref) => [
             ref.read(sessionControllerProvider.notifier).logout(),
       ),
     ];
+
+/// Light / dark / system theme picker.
+class ThemeMenuButton extends ConsumerWidget {
+  const ThemeMenuButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(themeControllerProvider);
+    final l10n = context.l10n;
+    final choices = <(ThemeMode, String, IconData)>[
+      (ThemeMode.system, l10n.themeSystem, Icons.brightness_auto_outlined),
+      (ThemeMode.light, l10n.themeLight, Icons.light_mode_outlined),
+      (ThemeMode.dark, l10n.themeDark, Icons.dark_mode_outlined),
+    ];
+    return PopupMenuButton<ThemeMode>(
+      icon: const Icon(Icons.brightness_6_outlined),
+      tooltip: l10n.theme,
+      onSelected: (mode) =>
+          ref.read(themeControllerProvider.notifier).set(mode),
+      itemBuilder: (context) => [
+        for (final (mode, label, icon) in choices)
+          CheckedPopupMenuItem(
+            value: mode,
+            checked: current == mode,
+            child: Row(
+              children: [
+                Icon(icon, size: 20),
+                const SizedBox(width: 12),
+                Text(label),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 /// Account menu: entry points to verify the user's email and phone (with their
 /// current verification state), and a "sign out of all devices" action.

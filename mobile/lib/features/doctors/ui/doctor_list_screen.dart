@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/l10n.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_view.dart';
+import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/rating_stars.dart';
 import '../../../core/widgets/session_actions.dart';
 import '../state/doctors_providers.dart';
@@ -102,15 +104,17 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
           ),
           Expanded(
             child: listState.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const SkeletonList(),
               error: (error, _) => ErrorView(
                 error: error,
                 onRetry: () => ref.invalidate(doctorListControllerProvider),
               ),
               data: (data) {
                 if (data.items.isEmpty) {
-                  return Center(child: Text(l10n.noDoctorsFound));
+                  return EmptyState(
+                    icon: Icons.search_off,
+                    title: l10n.noDoctorsFound,
+                  );
                 }
                 return RefreshIndicator(
                   onRefresh: () async =>
