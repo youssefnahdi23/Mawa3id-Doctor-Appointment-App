@@ -34,6 +34,15 @@ services:
       PATREON_URL: ${PATREON_URL:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # Konnect (D17 / Flouci / local cards) — offered only when key + wallet are set.
+      KONNECT_API_KEY: ${KONNECT_API_KEY:-}
+      KONNECT_WALLET_ID: ${KONNECT_WALLET_ID:-}
+      KONNECT_BASE_URL: ${KONNECT_BASE_URL:-https://api.konnect.network/api/v2}
+      KONNECT_WEBHOOK_URL: ${KONNECT_WEBHOOK_URL:-}
+      # Manual bank transfer details, shown to donors when the number is set.
+      RIB_ACCOUNT_HOLDER: ${RIB_ACCOUNT_HOLDER:-}
+      RIB_BANK_NAME: ${RIB_BANK_NAME:-}
+      RIB_NUMBER: ${RIB_NUMBER:-}
     # Not published to the host: the backend is reached only through the Caddy
     # reverse proxy (via the internal hostname `app:8080`). This keeps plain HTTP
     # off the host so all external traffic is TLS-terminated by Caddy.

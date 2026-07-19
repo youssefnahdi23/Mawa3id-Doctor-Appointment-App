@@ -91,12 +91,65 @@ class DonationIntegrationTest {
     }
 
     @Test
-    void configExposesPatreonLink() throws Exception {
+    void configExposesAllConfiguredMethods() throws Exception {
         mockMvc.perform(get("/api/donations/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cardEnabled").value(true))
                 .andExpect(jsonPath("$.minAmountMinor").value(100))
-                .andExpect(jsonPath("$.patreonUrl").value("https://patreon.com/mawa3id-test"));
+                .andExpect(jsonPath("$.patreonUrl").value("https://patreon.com/mawa3id-test"))
+                .andExpect(jsonPath("$.konnectEnabled").value(true))
+                .andExpect(jsonPath("$.konnectCurrency").value("tnd"))
+                .andExpect(jsonPath("$.ribAccountHolder").value("Mawa3id Association"))
+                .andExpect(jsonPath("$.ribBankName").value("Test Bank"))
+                .andExpect(jsonPath("$.ribNumber").value("08 001 0000123456789 12"));
+    }
+
+    @Test
+    void konnectDonationReturnsPayUrlAndWebhookCompletesIt() throws Exception {
+        String token = registerPatient("donor-konnect@example.com");
+
+        MvcResult created = mockMvc.perform(post("/api/donations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountMinor\":5000,\"provider\":\"KONNECT\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.provider").value("KONNECT"))
+                .andExpect(jsonPath("$.currency").value("tnd"))
+                .andExpect(jsonPath("$.checkoutUrl").value(org.hamcrest.Matchers.startsWith(
+                        StubKonnectGateway.URL_PREFIX)))
+                .andReturn();
+        long id = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        String ref = StubKonnectGateway.REF_PREFIX + id;
+
+        // Konnect calls back with GET ?payment_ref=; the stub reports COMPLETED.
+        mockMvc.perform(get("/api/donations/konnect/webhook").param("payment_ref", ref))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/donations/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("SUCCEEDED"));
+    }
+
+    @Test
+    void konnectWebhookWithUnknownOrMissingRefIsAcknowledged() throws Exception {
+        mockMvc.perform(get("/api/donations/konnect/webhook").param("payment_ref", "nope"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/donations/konnect/webhook"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void ribDonationIsRecordedPendingWithoutCheckoutUrl() throws Exception {
+        String token = registerPatient("donor-rib@example.com");
+
+        mockMvc.perform(post("/api/donations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountMinor\":20000,\"provider\":\"RIB\",\"message\":\"transfer ref 123\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.provider").value("RIB"))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.checkoutUrl").doesNotExist());
     }
 
     // ---- helpers ----

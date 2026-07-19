@@ -20,45 +20,83 @@ public class DonationService {
     private final DonationRepository donationRepository;
     private final UserRepository userRepository;
     private final PaymentGateway paymentGateway;
+    private final KonnectGateway konnectGateway;
     private final DonationProperties properties;
 
     public DonationService(DonationRepository donationRepository, UserRepository userRepository,
-                           PaymentGateway paymentGateway, DonationProperties properties) {
+                           PaymentGateway paymentGateway, KonnectGateway konnectGateway,
+                           DonationProperties properties) {
         this.donationRepository = donationRepository;
         this.userRepository = userRepository;
         this.paymentGateway = paymentGateway;
+        this.konnectGateway = konnectGateway;
         this.properties = properties;
     }
 
     /**
-     * Start a donation: persist a PENDING record, open a checkout session with the
-     * provider, and return the redirect URL.
+     * Start a donation on the requested channel: persist a PENDING record and, for hosted
+     * providers (Stripe / Konnect), open a checkout session and return the redirect URL.
+     * RIB donations record the donor's declared bank transfer for manual reconciliation
+     * (no checkout URL).
      *
      * @param userId the authenticated donor, or {@code null} for an anonymous donation
      */
     @Transactional
     public DonationResponse create(Long userId, CreateDonationRequest request) {
-        if (!properties.isEnabled()) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Card donations are currently unavailable");
-        }
+        DonationProvider provider = request.providerOrDefault();
+        requireAvailable(provider);
         if (request.amountMinor() < properties.getMinAmountMinor()) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Minimum donation is " + properties.getMinAmountMinor() + " (minor units)");
         }
 
-        String currency = (request.currency() != null && !request.currency().isBlank())
-                ? request.currency().toLowerCase()
-                : properties.getCurrency();
+        String currency = currencyFor(provider, request.currency());
         User user = userId == null ? null : userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
         Donation donation = donationRepository.save(new Donation(user, request.amountMinor(), currency,
-                DonationProvider.STRIPE, request.donorName(), request.message()));
+                provider, request.donorName(), request.message()));
 
-        PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession(donation);
-        donation.attachSession(session.sessionId());
-        return DonationResponse.from(donation, session.checkoutUrl());
+        return switch (provider) {
+            case STRIPE -> {
+                PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession(donation);
+                donation.attachSession(session.sessionId());
+                yield DonationResponse.from(donation, session.checkoutUrl());
+            }
+            case KONNECT -> {
+                PaymentGateway.CheckoutSession session = konnectGateway.createCheckoutSession(donation);
+                donation.attachSession(session.sessionId());
+                yield DonationResponse.from(donation, session.checkoutUrl());
+            }
+            // Manual transfer: stays PENDING until reconciled by hand against the bank account.
+            case RIB -> DonationResponse.from(donation);
+        };
+    }
+
+    private void requireAvailable(DonationProvider provider) {
+        boolean available = properties.isEnabled() && switch (provider) {
+            case STRIPE -> true;
+            case KONNECT -> properties.getKonnect().isConfigured();
+            case RIB -> properties.getRib().isConfigured();
+        };
+        if (!available) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "This donation method is currently unavailable");
+        }
+    }
+
+    /**
+     * Konnect and RIB amounts are always in their configured (Tunisian) currency; only
+     * Stripe honours a caller-supplied currency, defaulting to the global one.
+     */
+    private String currencyFor(DonationProvider provider, String requested) {
+        return switch (provider) {
+            case STRIPE -> (requested != null && !requested.isBlank())
+                    ? requested.toLowerCase()
+                    : properties.getCurrency();
+            case KONNECT -> properties.getKonnect().getCurrency();
+            case RIB -> properties.getRib().getCurrency();
+        };
     }
 
     /**
@@ -89,6 +127,35 @@ public class DonationService {
         }
     }
 
+    /**
+     * Apply a Konnect callback. Konnect does not sign payloads; it passes a
+     * {@code payment_ref} and the server fetches the authoritative status from the
+     * Konnect API. Idempotent: unknown refs and already-finalised donations are ignored.
+     */
+    @Transactional
+    public void handleKonnectWebhook(String paymentRef) {
+        if (paymentRef == null || paymentRef.isBlank()) {
+            return;
+        }
+        Optional<Donation> found = donationRepository.findByProviderSessionId(paymentRef);
+        if (found.isEmpty()) {
+            return;
+        }
+        Donation donation = found.get();
+        if (donation.getProvider() != DonationProvider.KONNECT
+                || donation.getStatus() != DonationStatus.PENDING) {
+            return;
+        }
+        switch (konnectGateway.fetchPaymentStatus(paymentRef)) {
+            case COMPLETED -> donation.markSucceeded(paymentRef);
+            case EXPIRED -> donation.markExpired();
+            case FAILED -> donation.markFailed();
+            case IGNORED -> {
+                // Still pending on Konnect's side; a later callback will settle it.
+            }
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<DonationResponse> listForUser(Long userId) {
         return donationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
@@ -97,7 +164,20 @@ public class DonationService {
     }
 
     public DonationConfigResponse config() {
-        return new DonationConfigResponse(properties.isEnabled(), properties.getCurrency(),
-                properties.getMinAmountMinor(), properties.getPatreonUrl());
+        boolean enabled = properties.isEnabled();
+        DonationProperties.Konnect konnect = properties.getKonnect();
+        DonationProperties.Rib rib = properties.getRib();
+        boolean ribAvailable = enabled && rib.isConfigured();
+        return new DonationConfigResponse(
+                enabled,
+                properties.getCurrency(),
+                properties.getMinAmountMinor(),
+                properties.getPatreonUrl(),
+                enabled && konnect.isConfigured(),
+                konnect.getCurrency(),
+                ribAvailable ? rib.getAccountHolder() : "",
+                ribAvailable ? rib.getBankName() : "",
+                ribAvailable ? rib.getNumber() : "",
+                rib.getCurrency());
     }
 }

@@ -95,6 +95,17 @@ class AccountMenuButton extends ConsumerWidget {
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
+          value: '/donate',
+          child: Row(
+            children: [
+              const Icon(Icons.volunteer_activism_outlined, size: 20),
+              const SizedBox(width: 12),
+              Text(l10n.supportMawa3id),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
           value: _logoutAll,
           child: Text(l10n.logoutAllTitle),
         ),

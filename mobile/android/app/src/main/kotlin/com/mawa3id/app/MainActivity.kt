@@ -1,4 +1,4 @@
-package com.mawa3id.mawa3id
+package com.mawa3id.app
 
 import io.flutter.embedding.android.FlutterActivity
 

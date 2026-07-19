@@ -155,6 +155,13 @@
                                   covered via the test-profile StubPaymentGateway.
                                 -->
                                 <exclude>com/mawa3id/donation/StripePaymentGateway.class</exclude>
+                                <!--
+                                  Thin Konnect adapter: same rationale as Stripe — real
+                                  HTTP calls to the Konnect API that cannot run in CI
+                                  without live keys. The donation domain that uses it is
+                                  fully covered via the test-profile StubKonnectGateway.
+                                -->
+                                <exclude>com/mawa3id/donation/KonnectPaymentGateway.class</exclude>
                             </excludes>
                             <rules>
                                 <rule>
