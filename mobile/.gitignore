@@ -16,3 +16,7 @@ lib/l10n/gen/
 
 # Coverage output
 coverage/
+
+# Firebase native config (push notifications) — provided per environment, never committed.
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist

@@ -6,6 +6,14 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase Cloud Messaging needs the google-services plugin, but only works with a
+// real `android/app/google-services.json`. Apply it conditionally (same trick as the
+// release keystore below) so local/CI builds without the file still compile — push
+// just stays inert until the file is dropped in.
+if (rootProject.file("app/google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Optional release signing: populated from a gitignored `android/key.properties`
 // (see key.properties.example). When it's absent we fall back to debug signing so
 // `flutter build` still works for contributors and CI without the secret.

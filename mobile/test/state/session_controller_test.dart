@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mawa3id/core/network/api_exception.dart';
 import 'package:mawa3id/core/network/dio_client.dart';
+import 'package:mawa3id/core/push/firebase_push_messaging.dart';
+import 'package:mawa3id/core/push/push_service.dart';
 import 'package:mawa3id/core/storage/token_storage.dart';
 import 'package:mawa3id/features/auth/data/auth_models.dart';
 import 'package:mawa3id/features/auth/data/auth_repository.dart';
@@ -11,6 +13,10 @@ import 'package:mocktail/mocktail.dart';
 class _MockTokenStorage extends Mock implements TokenStorage {}
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
+
+/// No-op push service so the session controller's best-effort device
+/// registration never touches Firebase in tests.
+class _MockPushService extends Mock implements PushService {}
 
 StoredSession _stored({DateTime? expiresAt, String? refreshToken}) =>
     StoredSession(
@@ -26,6 +32,7 @@ StoredSession _stored({DateTime? expiresAt, String? refreshToken}) =>
 void main() {
   late _MockTokenStorage storage;
   late _MockAuthRepository authRepository;
+  late _MockPushService pushService;
   late ProviderContainer container;
 
   setUpAll(() {
@@ -35,12 +42,16 @@ void main() {
   setUp(() {
     storage = _MockTokenStorage();
     authRepository = _MockAuthRepository();
+    pushService = _MockPushService();
     when(() => storage.clear()).thenAnswer((_) async {});
     when(() => storage.save(any())).thenAnswer((_) async {});
     when(() => storage.cachedRefreshToken).thenReturn(null);
+    when(() => pushService.registerCurrentDevice()).thenAnswer((_) async {});
+    when(() => pushService.unregister()).thenAnswer((_) async {});
     container = ProviderContainer(overrides: [
       tokenStorageProvider.overrideWithValue(storage),
       authRepositoryProvider.overrideWithValue(authRepository),
+      pushServiceProvider.overrideWithValue(pushService),
     ]);
     addTearDown(container.dispose);
   });

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/auth_events.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/push/firebase_push_messaging.dart';
 import '../../../core/storage/token_storage.dart';
 import '../data/auth_models.dart';
 import '../data/auth_repository.dart';
@@ -56,6 +59,7 @@ class SessionController extends AsyncNotifier<Session?> {
     }
     try {
       final me = await ref.read(authRepositoryProvider).me();
+      _registerDevice();
       return Session(
         userId: me.userId,
         username: me.username,
@@ -72,6 +76,7 @@ class SessionController extends AsyncNotifier<Session?> {
       }
       // Backend unreachable: trust the stored session so the app still opens;
       // the next 401 triggers a refresh, and a failed refresh forces logout.
+      _registerDevice();
       return Session(
         userId: stored.userId,
         username: stored.username,
@@ -103,10 +108,13 @@ class SessionController extends AsyncNotifier<Session?> {
         role: auth.role,
       ),
     );
+    _registerDevice();
   }
 
   Future<void> logout() async {
     final refreshToken = ref.read(tokenStorageProvider).cachedRefreshToken;
+    // Drop this device's push token while the JWT is still valid.
+    await _unregisterDevice();
     // Best-effort server-side revocation; ignore failures (we log out locally regardless).
     if (refreshToken != null) {
       try {
@@ -120,6 +128,7 @@ class SessionController extends AsyncNotifier<Session?> {
 
   /// Revoke every session for this account server-side, then log out locally.
   Future<void> logoutAll() async {
+    await _unregisterDevice();
     try {
       await ref.read(authRepositoryProvider).logoutAll();
     } on ApiException {
@@ -131,5 +140,25 @@ class SessionController extends AsyncNotifier<Session?> {
   Future<void> _clearLocally() async {
     await ref.read(tokenStorageProvider).clear();
     state = const AsyncData(null);
+  }
+
+  /// Register this device for push, fire-and-forget. Never blocks auth and never
+  /// surfaces failures — the in-app notification feed works regardless.
+  void _registerDevice() {
+    unawaited(() async {
+      try {
+        await ref.read(pushServiceProvider).registerCurrentDevice();
+      } catch (_) {
+        // ignore — push is best-effort
+      }
+    }());
+  }
+
+  Future<void> _unregisterDevice() async {
+    try {
+      await ref.read(pushServiceProvider).unregister();
+    } catch (_) {
+      // ignore — best-effort, we log out locally regardless
+    }
   }
 }

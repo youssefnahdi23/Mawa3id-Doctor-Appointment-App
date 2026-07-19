@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/navigation/navigator_key.dart';
 import '../features/appointments/ui/doctor_appointments_screen.dart';
 import '../features/appointments/ui/patient_appointments_screen.dart';
 import '../features/appointments/ui/slot_picker_screen.dart';
@@ -36,6 +37,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(sessionControllerProvider, (_, __) => sessionChanged.value++);
 
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: sessionChanged,
     redirect: (context, state) {
