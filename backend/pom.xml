@@ -22,6 +22,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
         <stripe.version>33.1.0</stripe.version>
+        <firebase-admin.version>9.4.3</firebase-admin.version>
     </properties>
 
     <dependencies>
@@ -88,6 +89,13 @@
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
             <version>${stripe.version}</version>
+        </dependency>
+
+        <!-- Firebase Admin SDK: sends FCM push notifications (also fronts APNs for iOS). -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>${firebase-admin.version}</version>
         </dependency>
 
         <!-- Test -->
@@ -162,6 +170,13 @@
                                   fully covered via the test-profile StubKonnectGateway.
                                 -->
                                 <exclude>com/mawa3id/donation/KonnectPaymentGateway.class</exclude>
+                                <!--
+                                  Thin FCM adapter: real network calls to Firebase Cloud
+                                  Messaging that cannot run in CI without live credentials.
+                                  The push dispatch domain that uses it is fully covered via
+                                  the test-profile StubPushSender.
+                                -->
+                                <exclude>com/mawa3id/notification/FcmPushSender.class</exclude>
                             </excludes>
                             <rules>
                                 <rule>

@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.quality.Strictness;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +43,7 @@ class NotificationServiceTest {
     @Mock private NotificationRepository notificationRepository;
     @Mock private AppointmentRepository appointmentRepository;
     @Mock private NotificationProperties properties;
+    @Mock private ApplicationEventPublisher events;
 
     @InjectMocks private NotificationService notificationService;
 
@@ -85,6 +87,7 @@ class NotificationServiceTest {
 
         assertThat(saved.getType()).isEqualTo(NotificationType.APPOINTMENT_BOOKED);
         verify(notificationRepository).save(any(Notification.class));
+        verify(events).publishEvent(any(NotificationCreatedEvent.class));
     }
 
     // ---- listing ----

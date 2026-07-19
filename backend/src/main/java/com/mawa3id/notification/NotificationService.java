@@ -7,6 +7,7 @@ import com.mawa3id.common.ApiException;
 import com.mawa3id.common.ResourceNotFoundException;
 import com.mawa3id.notification.dto.NotificationResponse;
 import com.mawa3id.user.User;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -22,19 +23,28 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final AppointmentRepository appointmentRepository;
     private final NotificationProperties properties;
+    private final ApplicationEventPublisher events;
 
     public NotificationService(NotificationRepository notificationRepository,
                                AppointmentRepository appointmentRepository,
-                               NotificationProperties properties) {
+                               NotificationProperties properties,
+                               ApplicationEventPublisher events) {
         this.notificationRepository = notificationRepository;
         this.appointmentRepository = appointmentRepository;
         this.properties = properties;
+        this.events = events;
     }
 
-    /** Persist a single notification. Called from within other services' transactions. */
+    /**
+     * Persist a single notification. Called from within other services' transactions.
+     * Publishes a {@link NotificationCreatedEvent} so push delivery is dispatched after the
+     * surrounding transaction commits.
+     */
     @Transactional
     public Notification record(User recipient, NotificationType type, String message, Appointment appointment) {
-        return notificationRepository.save(new Notification(recipient, type, message, appointment));
+        Notification saved = notificationRepository.save(new Notification(recipient, type, message, appointment));
+        events.publishEvent(NotificationCreatedEvent.from(saved));
+        return saved;
     }
 
     @Transactional(readOnly = true)

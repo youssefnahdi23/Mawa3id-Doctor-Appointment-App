@@ -43,6 +43,10 @@ services:
       RIB_ACCOUNT_HOLDER: ${RIB_ACCOUNT_HOLDER:-}
       RIB_BANK_NAME: ${RIB_BANK_NAME:-}
       RIB_NUMBER: ${RIB_NUMBER:-}
+      # Push notifications (FCM). No-op unless FCM_CREDENTIALS (service-account JSON) is set.
+      FCM_ENABLED: ${FCM_ENABLED:-true}
+      FCM_CREDENTIALS: ${FCM_CREDENTIALS:-}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
     # Not published to the host: the backend is reached only through the Caddy
     # reverse proxy (via the internal hostname `app:8080`). This keeps plain HTTP
     # off the host so all external traffic is TLS-terminated by Caddy.

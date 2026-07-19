@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Apple Push Notification environment. Set to `production` for release builds
+	     in Phase 5 CI. This file must be referenced from the Runner target's
+	     CODE_SIGN_ENTITLEMENTS build setting (wired during the macOS CI setup). -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

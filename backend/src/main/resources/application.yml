@@ -102,6 +102,13 @@ mawa3id:
       enabled: ${NOTIFICATIONS_REMINDER_ENABLED:true}
       window-hours: ${NOTIFICATIONS_REMINDER_WINDOW_HOURS:24}
       cron: ${NOTIFICATIONS_REMINDER_CRON:0 0 * * * *}
+  push:
+    # Push notifications via Firebase Cloud Messaging (FCM, which also fronts APNs for iOS).
+    # Degrades to a no-op when no credentials are provided, so the in-app feed keeps working
+    # without a Firebase project. Provide the service-account JSON inline via FCM_CREDENTIALS.
+    enabled: ${FCM_ENABLED:true}
+    credentials: ${FCM_CREDENTIALS:}
+    project-id: ${FCM_PROJECT_ID:}
 
 springdoc:
   swagger-ui:
