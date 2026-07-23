@@ -1,0 +1,228 @@
+name: Release build
+
+# Produces store-ready binaries: a signed Android App Bundle (+ APK) and a signed
+# iOS App Store IPA, plus iOS Simulator screenshots (the way to see the iOS app
+# from a Windows dev machine). See mobile/RELEASE_SIGNING.md for the secrets.
+#
+# Degrades cleanly: every signing step is gated on its secrets being present, so
+# with no secrets the workflow still runs and yields unsigned/debug-signed builds
+# and the simulator screenshots. Add the secrets to upgrade to signed artifacts.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android (signed AAB + APK)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Detect signing secrets
+        id: secrets
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GSERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: |
+          [ -n "$KEYSTORE" ] && echo "signing=true" >> "$GITHUB_OUTPUT" || echo "signing=false" >> "$GITHUB_OUTPUT"
+          [ -n "$GSERVICES" ] && echo "gservices=true" >> "$GITHUB_OUTPUT" || echo "gservices=false" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch dependencies
+        run: flutter pub get
+
+      # Generated sources (l10n + json_serializable) are gitignored, same as mobile-ci.
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Configure release signing
+        if: steps.secrets.outputs.signing == 'true'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE" | base64 --decode > android/app/upload-keystore.jks
+          {
+            echo "storePassword=${STORE_PASSWORD}"
+            echo "keyPassword=${KEY_PASSWORD}"
+            echo "keyAlias=${KEY_ALIAS}"
+            echo "storeFile=upload-keystore.jks"
+          } > android/key.properties
+
+      - name: Add google-services.json
+        if: steps.secrets.outputs.gservices == 'true'
+        env:
+          GSERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GSERVICES" > android/app/google-services.json
+
+      # Signs with the upload key when key.properties exists (see
+      # android/app/build.gradle.kts), otherwise falls back to debug signing.
+      - name: Build App Bundle
+        run: flutter build appbundle --release
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload Android artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-release
+          path: |
+            mobile/build/app/outputs/bundle/release/app-release.aab
+            mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS (IPA + Simulator screenshots)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Detect signing secrets
+        id: secrets
+        env:
+          ASC_KEY: ${{ secrets.IOS_ASC_KEY_P8 }}
+          GSERVICES: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          [ -n "$ASC_KEY" ] && echo "signing=true" >> "$GITHUB_OUTPUT" || echo "signing=false" >> "$GITHUB_OUTPUT"
+          [ -n "$GSERVICES" ] && echo "gservices=true" >> "$GITHUB_OUTPUT" || echo "gservices=false" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Add GoogleService-Info.plist
+        if: steps.secrets.outputs.gservices == 'true'
+        env:
+          GSERVICES: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
+        run: printf '%s' "$GSERVICES" > ios/Runner/GoogleService-Info.plist
+
+      # Proves the app compiles for a real device on macOS regardless of signing.
+      - name: Build iOS (release, no codesign)
+        run: flutter build ios --release --no-codesign
+
+      # Build a simulator variant so we can boot it and capture screenshots.
+      - name: Build iOS (simulator)
+        run: flutter build ios --simulator --debug
+
+      - name: iOS Simulator screenshots
+        if: always()
+        continue-on-error: true
+        run: |
+          APP_PATH=build/ios/iphonesimulator/Runner.app
+          if [ ! -d "$APP_PATH" ]; then echo "No simulator .app built; skipping."; exit 0; fi
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import sys,json;d=json.load(sys.stdin)['devices'];devs=[x for v in d.values() for x in v if 'iPhone' in x['name']];print(devs[0]['udid'] if devs else '')")
+          if [ -z "$UDID" ]; then echo "No iPhone simulator available; skipping."; exit 0; fi
+          echo "Using simulator $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl launch "$UDID" com.mawa3id.app || true
+          mkdir -p build/screenshots
+          sleep 20
+          xcrun simctl io "$UDID" screenshot build/screenshots/01-launch.png || true
+          sleep 5
+          xcrun simctl io "$UDID" screenshot build/screenshots/02-settled.png || true
+          xcrun simctl shutdown "$UDID" || true
+
+      # Signed App Store IPA. Automatic signing via an App Store Connect API key
+      # (-allowProvisioningUpdates lets Xcode create/download the cert + profile).
+      - name: Build signed IPA
+        if: steps.secrets.outputs.signing == 'true'
+        env:
+          IOS_ASC_KEY_P8: ${{ secrets.IOS_ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "$IOS_ASC_KEY_P8" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          # Inject the real team id and switch push to the production APNs environment.
+          sed -i '' "s/__APPLE_TEAM_ID__/${APPLE_TEAM_ID}/g" ios/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c "Set :aps-environment production" ios/Runner/Runner.entitlements
+          xcodebuild -project ios/Runner.xcodeproj \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Runner.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            archive
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath build/ios/ipa \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Upload IPA
+        if: steps.secrets.outputs.signing == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-release
+          path: mobile/build/ios/ipa/*.ipa
+          if-no-files-found: error
+
+      - name: Upload Simulator screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-screenshots
+          path: mobile/build/screenshots/
+          if-no-files-found: warn
