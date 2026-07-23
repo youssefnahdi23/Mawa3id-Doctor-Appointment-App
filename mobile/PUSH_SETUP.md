@@ -14,9 +14,11 @@ are inactive (the in-app notifications feed keeps working).
    file is present (see `android/app/build.gradle.kts`).
 3. **iOS** — download `GoogleService-Info.plist` into `mobile/ios/Runner/` and
    add it to the Runner target in Xcode. Upload an **APNs auth key** to Firebase
-   (Project settings → Cloud Messaging). Reference `Runner/Runner.entitlements`
-   from the Runner target's `CODE_SIGN_ENTITLEMENTS` build setting, and set
-   `aps-environment` to `production` for release builds.
+   (Project settings → Cloud Messaging). `Runner/Runner.entitlements` is already
+   wired into the Runner target's `CODE_SIGN_ENTITLEMENTS` build setting; it is
+   `aps-environment = development` for local/debug builds, and the release CI
+   flips it to `production` for signed App Store archives (see
+   [RELEASE_SIGNING.md](RELEASE_SIGNING.md)).
 4. **Backend** — set `FCM_CREDENTIALS` (service-account JSON) so the server can
    send. See `.env.example`.
 
