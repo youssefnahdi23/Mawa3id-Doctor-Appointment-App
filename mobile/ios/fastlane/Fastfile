@@ -1,0 +1,43 @@
+# App Store Connect metadata + screenshot upload for Mawa3id (iOS).
+#
+# This deploys the store *listing* (name/subtitle/description/keywords/
+# screenshots) from `fastlane/metadata` and `fastlane/screenshots`. The signed
+# .ipa itself is built and uploaded to TestFlight by the `release-build` GitHub
+# workflow; here we skip the binary and push only metadata.
+#
+# Auth uses an App Store Connect API key (the same key family as the signing
+# build): set ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 (the .p8 contents).
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Upload store listing + screenshots to App Store Connect (metadata only)"
+  lane :deploy do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_P8"]
+    )
+
+    upload_to_app_store(
+      api_key: api_key,
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      skip_metadata: false,
+      precheck_include_in_app_purchases: false,
+      force: true, # non-interactive: skip the HTML preview/confirmation
+      run_precheck_before_submit: false,
+      submit_for_review: false
+    )
+  end
+
+  desc "Validate the listing metadata without uploading (precheck)"
+  lane :validate do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_P8"]
+    )
+    precheck(api_key: api_key)
+  end
+end

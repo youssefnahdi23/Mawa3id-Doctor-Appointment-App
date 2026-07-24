@@ -1,0 +1,1 @@
+Première version de Mawa3id : prenez rendez-vous, recherchez des médecins par spécialité, gérez votre agenda, consultez vos dossiers de visite et recevez des rappels. Disponible en anglais, français et arabe.

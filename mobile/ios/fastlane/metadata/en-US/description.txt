@@ -1,0 +1,24 @@
+Mawa3id makes booking a doctor's appointment simple. Browse doctors by specialty, pick a free slot that suits you, and keep every appointment organised in one place.
+
+Mawa3id is a non-profit project, free for patients.
+
+FOR PATIENTS
+• Browse and search doctors by specialty
+• See real availability and book a free slot in seconds
+• Track your appointments: pending, accepted, cancelled and completed
+• Read the medical record a doctor shares after a visit — diagnosis, notes and prescription
+• Rate your visit and read other patients' reviews
+• Get notifications and reminders so you never miss an appointment
+
+FOR DOCTORS
+• Publish your weekly availability and set your visit duration
+• Accept bookings manually or automatically
+• Manage your daily agenda
+• Complete visits and attach a medical record for your patient
+
+PRIVACY YOU CAN TRUST
+Your data is encrypted in transit and never sold. Medical records are visible only to you and the doctor for that appointment. Read our privacy policy in the app.
+
+Available in English, French and Arabic, with full right-to-left support.
+
+Mawa3id does not provide medical advice, diagnosis or treatment and is not a substitute for professional care. In an emergency, contact your local emergency services.
