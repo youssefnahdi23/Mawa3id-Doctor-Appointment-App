@@ -94,6 +94,47 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
+      # Real UI screenshots on an emulator via the screenshot harness (fixtured
+      # API, no backend), capturing en/fr/ar. Non-fatal so the build stays green
+      # if the emulator can't start.
+      - name: Enable KVM
+        if: always()
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Capture store screenshots (Android emulator)
+        if: always()
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          working-directory: mobile
+          script: flutter drive --driver=test_driver/screenshot_driver.dart --target=integration_test/screenshots_test.dart
+
+      - name: Map screenshots into fastlane
+        if: always()
+        continue-on-error: true
+        run: |
+          for loc in en fr ar; do
+            case "$loc" in en) d=en-US;; fr) d=fr-FR;; ar) d=ar;; esac
+            src="build/screenshots/$loc"
+            [ -d "$src" ] || continue
+            mkdir -p "android/fastlane/metadata/android/$d/images/phoneScreenshots"
+            cp "$src"/*.png "android/fastlane/metadata/android/$d/images/phoneScreenshots"/ 2>/dev/null || true
+          done
+
+      - name: Upload Android screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-screenshots
+          path: mobile/build/screenshots/
+          if-no-files-found: warn
+
       - name: Upload Android artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -149,30 +190,43 @@ jobs:
       - name: Build iOS (release, no codesign)
         run: flutter build ios --release --no-codesign
 
-      # Build a simulator variant so we can boot it and capture screenshots.
-      - name: Build iOS (simulator)
-        run: flutter build ios --simulator --debug
+      # Real UI screenshots: boot an iPhone simulator and drive the app through
+      # each key screen with the screenshot harness (fixtured API, no backend),
+      # capturing en/fr/ar. Replaces the old blind `simctl` capture that only
+      # ever caught the home screen.
+      - name: Boot iPhone simulator
+        if: always()
+        run: |
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import sys,json;d=json.load(sys.stdin)['devices'];devs=[x for v in d.values() for x in v if 'iPhone' in x['name']];print(devs[0]['udid'] if devs else '')")
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+          if [ -n "$UDID" ]; then
+            echo "Booting simulator $UDID"
+            xcrun simctl boot "$UDID" || true
+            xcrun simctl bootstatus "$UDID" -b || true
+          fi
 
-      - name: iOS Simulator screenshots
+      - name: Capture store screenshots (flutter drive)
         if: always()
         continue-on-error: true
         run: |
-          APP_PATH=build/ios/iphonesimulator/Runner.app
-          if [ ! -d "$APP_PATH" ]; then echo "No simulator .app built; skipping."; exit 0; fi
-          UDID=$(xcrun simctl list devices available --json \
-            | python3 -c "import sys,json;d=json.load(sys.stdin)['devices'];devs=[x for v in d.values() for x in v if 'iPhone' in x['name']];print(devs[0]['udid'] if devs else '')")
-          if [ -z "$UDID" ]; then echo "No iPhone simulator available; skipping."; exit 0; fi
-          echo "Using simulator $UDID"
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b || true
-          xcrun simctl install "$UDID" "$APP_PATH"
-          xcrun simctl launch "$UDID" com.mawa3id.app || true
-          mkdir -p build/screenshots
-          sleep 20
-          xcrun simctl io "$UDID" screenshot build/screenshots/01-launch.png || true
-          sleep 5
-          xcrun simctl io "$UDID" screenshot build/screenshots/02-settled.png || true
-          xcrun simctl shutdown "$UDID" || true
+          if [ -z "$SIM_UDID" ]; then echo "No iPhone simulator available; skipping."; exit 0; fi
+          flutter drive \
+            --driver=test_driver/screenshot_driver.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d "$SIM_UDID"
+
+      - name: Map screenshots into fastlane
+        if: always()
+        continue-on-error: true
+        run: |
+          for loc in en fr ar; do
+            case "$loc" in en) d=en-US;; fr) d=fr-FR;; ar) d=ar;; esac
+            src="build/screenshots/$loc"
+            [ -d "$src" ] || continue
+            mkdir -p "ios/fastlane/screenshots/$d"
+            cp "$src"/*.png "ios/fastlane/screenshots/$d"/ 2>/dev/null || true
+          done
 
       # Signed App Store IPA. Automatic signing via an App Store Connect API key
       # (-allowProvisioningUpdates lets Xcode create/download the cert + profile).
