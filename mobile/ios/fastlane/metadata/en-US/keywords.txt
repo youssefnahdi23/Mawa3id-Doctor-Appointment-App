@@ -1,0 +1,1 @@
+doctor,appointment,medical,health,clinic,booking,schedule,reminder,physician,rdv

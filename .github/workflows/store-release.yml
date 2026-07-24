@@ -1,0 +1,203 @@
+name: Store release (metadata upload)
+
+# Uploads the store *listing* — descriptions + screenshots — to Google Play
+# (internal track) and App Store Connect, using the fastlane lanes in
+# mobile/android/fastlane and mobile/ios/fastlane. The signed app binaries are
+# built by `release-build.yml`; this workflow pushes metadata only.
+#
+# Manual-dispatch only, and degrades cleanly: each job checks for its secrets and
+# skips (green) when they are absent, so it is safe to keep before store accounts
+# exist. See mobile/RELEASE_SIGNING.md and docs/store/SUBMISSION.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      validate_only:
+        description: "Validate metadata without uploading"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  play:
+    name: Google Play listing
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Detect secrets
+        id: secrets
+        env:
+          SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          [ -n "$SA" ] && echo "present=true" >> "$GITHUB_OUTPUT" || echo "present=false" >> "$GITHUB_OUTPUT"
+
+      - name: Skip notice
+        if: steps.secrets.outputs.present != 'true'
+        run: echo "PLAY_SERVICE_ACCOUNT_JSON not set — skipping Play listing upload."
+
+      - name: Set up Flutter
+        if: steps.secrets.outputs.present == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Ruby + fastlane
+        if: steps.secrets.outputs.present == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install fastlane
+        if: steps.secrets.outputs.present == 'true'
+        run: gem install fastlane --no-document
+
+      - name: Fetch dependencies + generate sources
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Write service-account key
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: printf '%s' "$SA" > android/play-service-account.json
+
+      - name: Enable KVM
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Capture screenshots (emulator)
+        if: steps.secrets.outputs.present == 'true'
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          working-directory: mobile
+          script: flutter drive --driver=test_driver/screenshot_driver.dart --target=integration_test/screenshots_test.dart
+
+      - name: Map screenshots into fastlane
+        if: steps.secrets.outputs.present == 'true'
+        continue-on-error: true
+        run: |
+          for loc in en fr ar; do
+            case "$loc" in en) d=en-US;; fr) d=fr-FR;; ar) d=ar;; esac
+            src="build/screenshots/$loc"
+            [ -d "$src" ] || continue
+            mkdir -p "android/fastlane/metadata/android/$d/images/phoneScreenshots"
+            cp "$src"/*.png "android/fastlane/metadata/android/$d/images/phoneScreenshots"/ 2>/dev/null || true
+          done
+
+      - name: Upload listing to Play (internal)
+        if: steps.secrets.outputs.present == 'true'
+        working-directory: mobile/android
+        env:
+          PLAY_JSON_KEY_FILE: play-service-account.json
+          FASTLANE_VALIDATE_ONLY: ${{ inputs.validate_only }}
+        run: fastlane deploy
+
+  appstore:
+    name: App Store listing
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Detect secrets
+        id: secrets
+        env:
+          KEY: ${{ secrets.IOS_ASC_KEY_P8 }}
+        run: |
+          [ -n "$KEY" ] && echo "present=true" >> "$GITHUB_OUTPUT" || echo "present=false" >> "$GITHUB_OUTPUT"
+
+      - name: Skip notice
+        if: steps.secrets.outputs.present != 'true'
+        run: echo "IOS_ASC_KEY_P8 not set — skipping App Store listing upload."
+
+      - name: Set up Flutter
+        if: steps.secrets.outputs.present == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Ruby + fastlane
+        if: steps.secrets.outputs.present == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install fastlane
+        if: steps.secrets.outputs.present == 'true'
+        run: gem install fastlane --no-document
+
+      - name: Fetch dependencies + generate sources
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Boot iPhone simulator
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import sys,json;d=json.load(sys.stdin)['devices'];devs=[x for v in d.values() for x in v if 'iPhone' in x['name']];print(devs[0]['udid'] if devs else '')")
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+          if [ -n "$UDID" ]; then xcrun simctl boot "$UDID" || true; xcrun simctl bootstatus "$UDID" -b || true; fi
+
+      - name: Capture screenshots (flutter drive)
+        if: steps.secrets.outputs.present == 'true'
+        continue-on-error: true
+        run: |
+          if [ -z "$SIM_UDID" ]; then echo "No simulator; skipping."; exit 0; fi
+          flutter drive \
+            --driver=test_driver/screenshot_driver.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d "$SIM_UDID"
+
+      - name: Map screenshots into fastlane
+        if: steps.secrets.outputs.present == 'true'
+        continue-on-error: true
+        run: |
+          for loc in en fr ar; do
+            case "$loc" in en) d=en-US;; fr) d=fr-FR;; ar) d=ar;; esac
+            src="build/screenshots/$loc"
+            [ -d "$src" ] || continue
+            mkdir -p "ios/fastlane/screenshots/$d"
+            cp "$src"/*.png "ios/fastlane/screenshots/$d"/ 2>/dev/null || true
+          done
+
+      - name: Upload listing to App Store Connect
+        if: steps.secrets.outputs.present == 'true'
+        working-directory: mobile/ios
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_TEAM_ID: ${{ secrets.APP_STORE_CONNECT_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.IOS_ASC_KEY_P8 }}
+        run: |
+          if [ "${{ inputs.validate_only }}" = "true" ]; then fastlane validate; else fastlane deploy; fi

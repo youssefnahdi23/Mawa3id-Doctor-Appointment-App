@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mawa3id/core/l10n/l10n.dart';
+import 'package:mawa3id/core/util/url_launcher_service.dart';
 import 'package:mawa3id/core/widgets/session_actions.dart';
 import 'package:mawa3id/features/auth/data/auth_models.dart';
 import 'package:mawa3id/features/auth/state/session_controller.dart';
 
 import 'helpers.dart';
 
-Widget _host(Session session) => ProviderScope(
+Widget _host(Session session, {List<Override> overrides = const []}) =>
+    ProviderScope(
       overrides: [
         sessionControllerProvider
             .overrideWith(() => FakeSessionController(session)),
+        ...overrides,
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -56,5 +59,25 @@ void main() {
 
     // The destructive action is gated behind a confirm dialog.
     expect(find.text('Sign out everywhere'), findsOneWidget);
+  });
+
+  testWidgets('Legal & Privacy opens the hosted privacy page', (tester) async {
+    Uri? opened;
+    await tester.pumpWidget(_host(session, overrides: [
+      urlLauncherProvider.overrideWithValue((url) async {
+        opened = url;
+        return true;
+      }),
+    ]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.account_circle_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Legal & Privacy'));
+    await tester.pumpAndSettle();
+
+    expect(opened, isNotNull);
+    expect(opened!.path, '/legal/privacy');
+    expect(opened!.queryParameters['lang'], 'en');
   });
 }

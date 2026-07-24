@@ -1,0 +1,5 @@
+# Play Console identity for `supply`/`upload_to_play_store`.
+# The service-account JSON path comes from the environment (CI writes it from a
+# secret); nothing sensitive is committed.
+json_key_file(ENV["PLAY_JSON_KEY_FILE"] || "fastlane/play-service-account.json")
+package_name("com.mawa3id.app")

@@ -1,0 +1,37 @@
+# Play Store metadata + screenshot upload for Mawa3id (Android).
+#
+# This deploys the store *listing* (title/descriptions/changelogs/screenshots)
+# from `fastlane/metadata/android`. Uploading the app binary (.aab) is handled
+# by the `release-build` GitHub workflow; the first .aab for a track must be
+# uploaded before a metadata-only push succeeds (see docs/store/SUBMISSION.md).
+#
+# Auth: set PLAY_JSON_KEY_FILE to a Play Console service-account JSON (CI writes
+# it from the PLAY_SERVICE_ACCOUNT_JSON secret).
+
+default_platform(:android)
+
+platform :android do
+  desc "Upload store listing + screenshots to the Play internal track (metadata only)"
+  lane :deploy do
+    upload_to_play_store(
+      track: "internal",
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_changelogs: false,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      validate_only: ENV["FASTLANE_VALIDATE_ONLY"] == "true"
+    )
+  end
+
+  desc "Validate the listing metadata without uploading"
+  lane :validate do
+    upload_to_play_store(
+      track: "internal",
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      validate_only: true
+    )
+  end
+end

@@ -1,0 +1,1 @@
+médecin,rendez-vous,santé,clinique,réservation,rappel,spécialiste,agenda,visite,rdv

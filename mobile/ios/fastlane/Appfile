@@ -1,0 +1,6 @@
+# App Store Connect identity for `deliver`/`upload_to_app_store`.
+# Values are read from the environment so no account details are committed.
+app_identifier("com.mawa3id.app")
+apple_id(ENV["APPLE_ID"])            # Apple ID email used for App Store Connect
+team_id(ENV["APPLE_TEAM_ID"])        # 10-char Developer Team ID
+itc_team_id(ENV["APP_STORE_CONNECT_TEAM_ID"]) # optional App Store Connect team id
