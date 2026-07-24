@@ -90,4 +90,10 @@ push entitlement to `production` on a build-time copy before archiving.
 | `ios-release` (`.ipa`) | only when the iOS signing secrets exist |
 | `ios-simulator-screenshots` | always — view the iOS app from Windows |
 
-Uploading these to the Play Console / TestFlight is Phase 6 (store submission).
+Uploading these to the Play Console / TestFlight, plus the store listing, privacy
+and screenshots, is covered by the submission runbook:
+[`docs/store/SUBMISSION.md`](../docs/store/SUBMISSION.md). Listing copy lives under
+`android/fastlane/metadata` and `ios/fastlane/metadata`; the `store-release.yml`
+workflow pushes it. Data-safety/privacy-label and content-rating answers are in
+[`docs/store/data-safety.md`](../docs/store/data-safety.md) and
+[`docs/store/content-rating.md`](../docs/store/content-rating.md).
