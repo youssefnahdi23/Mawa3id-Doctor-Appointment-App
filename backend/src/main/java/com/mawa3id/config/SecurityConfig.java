@@ -61,6 +61,9 @@ public class SecurityConfig {
                                 "/api/donations/config", "/api/donations/konnect/webhook").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/actuator/health", "/actuator/health/**").permitAll()
+                        // Public legal pages (privacy policy + terms) — the store-required
+                        // hostable URLs. Browser-visited HTML, no auth.
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/legal", "/legal/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->

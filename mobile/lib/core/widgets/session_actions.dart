@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/state/session_controller.dart';
+import '../config/app_config.dart';
 import '../l10n/l10n.dart';
 import '../l10n/locale_controller.dart';
 import '../theme/theme_controller.dart';
+import '../util/url_launcher_service.dart';
 
 /// AppBar actions shared by every signed-in screen: theme + language pickers,
 /// account (contact verification), and logout.
@@ -63,6 +65,7 @@ class AccountMenuButton extends ConsumerWidget {
   const AccountMenuButton({super.key});
 
   static const _logoutAll = '__logout_all__';
+  static const _legal = '__legal__';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,6 +77,8 @@ class AccountMenuButton extends ConsumerWidget {
       onSelected: (value) {
         if (value == _logoutAll) {
           _confirmLogoutAll(context, ref);
+        } else if (value == _legal) {
+          _openLegal(context, ref);
         } else {
           context.push(value);
         }
@@ -104,6 +109,16 @@ class AccountMenuButton extends ConsumerWidget {
             ],
           ),
         ),
+        PopupMenuItem(
+          value: _legal,
+          child: Row(
+            children: [
+              const Icon(Icons.privacy_tip_outlined, size: 20),
+              const SizedBox(width: 12),
+              Text(l10n.legalAndPrivacy),
+            ],
+          ),
+        ),
         const PopupMenuDivider(),
         PopupMenuItem(
           value: _logoutAll,
@@ -111,6 +126,12 @@ class AccountMenuButton extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  /// Opens the hosted privacy policy in the user's current app language.
+  Future<void> _openLegal(BuildContext context, WidgetRef ref) async {
+    final lang = Localizations.localeOf(context).languageCode;
+    await ref.read(urlLauncherProvider)(AppConfig.legalUrl('privacy', lang));
   }
 
   Future<void> _confirmLogoutAll(BuildContext context, WidgetRef ref) async {
