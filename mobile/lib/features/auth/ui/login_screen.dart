@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/error_l10n.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../core/widgets/session_actions.dart';
+import '../../../core/widgets/settings_sheet.dart';
 import '../data/auth_repository.dart';
 import '../state/session_controller.dart';
 import 'auth_form_widgets.dart';
@@ -62,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.appTitle),
-        actions: const [LocaleMenuButton()],
+        actions: const [SettingsButton()],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -75,6 +76,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: SvgPicture.asset(
+                      'assets/images/mawa3id_logo.svg',
+                      height: 96,
+                      width: 96,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   Text(l10n.loginTitle,
                       style: Theme.of(context).textTheme.headlineSmall,
                       textAlign: TextAlign.center),
@@ -120,6 +129,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : Text(l10n.signIn),
                   ),
+                  const SizedBox(height: 20),
+                  _OrDivider(label: l10n.orDivider),
+                  const SizedBox(height: 20),
+                  // Social login is deferred: the backend has no OAuth endpoint
+                  // yet (see auth-system scope), so this button is inert for now.
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(content: Text(l10n.featureComingSoon)),
+                        );
+                    },
+                    icon: SvgPicture.asset(
+                      'assets/images/google_g.svg',
+                      height: 20,
+                      width: 20,
+                    ),
+                    label: Text(l10n.continueWithGoogle),
+                  ),
                   const SizedBox(height: 24),
                   TextButton(
                     onPressed: () => context.go('/register/patient'),
@@ -135,6 +164,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A horizontal rule with a centered label, e.g. "— or —".
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        const Expanded(child: Divider()),
+      ],
     );
   }
 }
