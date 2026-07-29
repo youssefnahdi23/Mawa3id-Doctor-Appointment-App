@@ -61,6 +61,10 @@ void main() {
           bio: any(named: 'bio'),
           acceptanceMode: any(named: 'acceptanceMode'),
           slotDurationMinutes: any(named: 'slotDurationMinutes'),
+          cnamConventionne: any(named: 'cnamConventionne'),
+          governorate: any(named: 'governorate'),
+          consultationFee: any(named: 'consultationFee'),
+          languages: any(named: 'languages'),
         )).thenAnswer((_) async => _doctor);
 
     await tester.pumpWidget(wrapWithApp(const DoctorProfileScreen(),
@@ -82,6 +86,10 @@ void main() {
           bio: any(named: 'bio'),
           acceptanceMode: any(named: 'acceptanceMode'),
           slotDurationMinutes: captureAny(named: 'slotDurationMinutes'),
+          cnamConventionne: any(named: 'cnamConventionne'),
+          governorate: any(named: 'governorate'),
+          consultationFee: any(named: 'consultationFee'),
+          languages: any(named: 'languages'),
         )).captured;
     expect(captured[0], 'Dr. Amal Updated');
     expect(captured[1], 30);
@@ -109,6 +117,10 @@ void main() {
           bio: any(named: 'bio'),
           acceptanceMode: any(named: 'acceptanceMode'),
           slotDurationMinutes: any(named: 'slotDurationMinutes'),
+          cnamConventionne: any(named: 'cnamConventionne'),
+          governorate: any(named: 'governorate'),
+          consultationFee: any(named: 'consultationFee'),
+          languages: any(named: 'languages'),
         ));
   });
 }

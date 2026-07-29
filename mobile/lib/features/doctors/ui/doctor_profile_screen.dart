@@ -8,6 +8,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/session_actions.dart';
 import '../data/doctor_models.dart';
+import '../data/doctor_reference.dart';
 import '../data/doctor_repository.dart';
 import '../state/doctors_providers.dart';
 
@@ -30,8 +31,12 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
   final _phone = TextEditingController();
   final _bio = TextEditingController();
   final _slotDuration = TextEditingController();
+  final _consultationFee = TextEditingController();
   int? _specialtyId;
   AcceptanceMode _acceptanceMode = AcceptanceMode.manual;
+  bool _cnamConventionne = false;
+  String? _governorate;
+  final Set<String> _languages = {};
 
   bool _seeded = false;
   bool _saving = false;
@@ -46,6 +51,7 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
     _phone.dispose();
     _bio.dispose();
     _slotDuration.dispose();
+    _consultationFee.dispose();
     super.dispose();
   }
 
@@ -56,8 +62,14 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
     _phone.text = doctor.phone ?? '';
     _bio.text = doctor.bio ?? '';
     _slotDuration.text = doctor.slotDurationMinutes.toString();
+    _consultationFee.text = doctor.consultationFee?.toString() ?? '';
     _specialtyId = doctor.specialty?.id;
     _acceptanceMode = doctor.acceptanceMode;
+    _cnamConventionne = doctor.cnamConventionne;
+    _governorate = doctor.governorate;
+    _languages
+      ..clear()
+      ..addAll(doctor.languages);
     _seeded = true;
   }
 
@@ -78,6 +90,10 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
             bio: _bio.text.trim(),
             acceptanceMode: _acceptanceMode,
             slotDurationMinutes: int.tryParse(_slotDuration.text.trim()),
+            cnamConventionne: _cnamConventionne,
+            governorate: _governorate,
+            consultationFee: int.tryParse(_consultationFee.text.trim()),
+            languages: _languages.toList(),
           );
       if (!mounted) return;
       ref.invalidate(myDoctorProfileProvider);
@@ -98,6 +114,7 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final languageCode = Localizations.localeOf(context).languageCode;
     final profile = ref.watch(myDoctorProfileProvider);
     final specialties = ref.watch(specialtiesProvider);
 
@@ -149,9 +166,26 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                         ),
                         items: [
                           for (final s in specialties.valueOrNull ?? [])
-                            DropdownMenuItem(value: s.id, child: Text(s.name)),
+                            DropdownMenuItem(
+                                value: s.id,
+                                child: Text(s.localizedName(languageCode))),
                         ],
                         onChanged: (v) => setState(() => _specialtyId = v),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String?>(
+                        initialValue: _governorate,
+                        decoration:
+                            InputDecoration(labelText: l10n.governorate),
+                        items: [
+                          DropdownMenuItem(
+                              value: null, child: Text(l10n.noGovernorate)),
+                          for (final code in kGovernorates)
+                            DropdownMenuItem(
+                                value: code,
+                                child: Text(governorateLabel(l10n, code))),
+                        ],
+                        onChanged: (v) => setState(() => _governorate = v),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -182,6 +216,49 @@ class _DoctorProfileScreenState extends ConsumerState<DoctorProfileScreen> {
                         minLines: 2,
                         maxLines: 5,
                         forceErrorText: _fieldErrors['bio'],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _consultationFee,
+                        decoration: InputDecoration(
+                          labelText: l10n.consultationFee,
+                          helperText: l10n.consultationFeeHint,
+                          suffixText: l10n.consultationFeeUnit,
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        forceErrorText: _fieldErrors['consultationFee'],
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.cnamConventionneLabel),
+                        value: _cnamConventionne,
+                        onChanged: (v) =>
+                            setState(() => _cnamConventionne = v),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(l10n.languagesSpoken,
+                          style: Theme.of(context).textTheme.labelLarge),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final code in kSpokenLanguages)
+                            FilterChip(
+                              label: Text(languageLabel(l10n, code)),
+                              selected: _languages.contains(code),
+                              onSelected: (selected) => setState(() {
+                                if (selected) {
+                                  _languages.add(code);
+                                } else {
+                                  _languages.remove(code);
+                                }
+                              }),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       Text(l10n.acceptanceModeLabel,

@@ -7,6 +7,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/rating_stars.dart';
 import '../data/doctor_models.dart';
+import '../data/doctor_reference.dart';
 import '../state/doctors_providers.dart';
 
 class DoctorDetailScreen extends ConsumerWidget {
@@ -47,6 +48,7 @@ class _DoctorDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final languageCode = Localizations.localeOf(context).languageCode;
     final reviews = ref.watch(doctorReviewsProvider(doctor.userId));
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -68,12 +70,35 @@ class _DoctorDetailBody extends ConsumerWidget {
                   Text(doctor.name,
                       style: Theme.of(context).textTheme.titleLarge),
                   if (doctor.specialty != null)
-                    Text(doctor.specialty!.name,
+                    Text(doctor.specialty!.localizedName(languageCode),
                         style: Theme.of(context).textTheme.bodyMedium),
                   RatingStars(
                     average: doctor.ratingAverage,
                     count: doctor.ratingCount,
                   ),
+                  if (doctor.cnamConventionne)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          l10n.cnamConventionneLabel,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -108,9 +133,23 @@ class _DoctorDetailBody extends ConsumerWidget {
           Text(doctor.bio!),
         ],
         const SizedBox(height: 16),
+        if (governorateLabel(l10n, doctor.governorate).isNotEmpty)
+          _InfoRow(
+              icon: Icons.map_outlined,
+              text: governorateLabel(l10n, doctor.governorate)),
         if (doctor.cabinetAddress != null &&
             doctor.cabinetAddress!.isNotEmpty)
           _InfoRow(icon: Icons.place_outlined, text: doctor.cabinetAddress!),
+        if (doctor.consultationFee != null)
+          _InfoRow(
+              icon: Icons.payments_outlined,
+              text: '${doctor.consultationFee} ${l10n.consultationFeeUnit}'),
+        if (doctor.languages.isNotEmpty)
+          _InfoRow(
+              icon: Icons.translate_outlined,
+              text: doctor.languages
+                  .map((code) => languageLabel(l10n, code))
+                  .join(' · ')),
         if (doctor.phone != null && doctor.phone!.isNotEmpty)
           _InfoRow(icon: Icons.phone_outlined, text: doctor.phone!),
         if (doctor.workingHours != null && doctor.workingHours!.isNotEmpty)
