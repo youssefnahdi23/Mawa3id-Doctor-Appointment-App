@@ -54,6 +54,18 @@ class SpecialtyControllerIntegrationTest {
     }
 
     @Test
+    void responseExposesLocalizedNames() throws Exception {
+        Long id = specialtyRepository
+                .save(new Specialty("Endocrinology", "الغدد الصماء", "Endocrinologie", "Hormones"))
+                .getId();
+
+        mockMvc.perform(get("/api/specialties/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nameAr").value("الغدد الصماء"))
+                .andExpect(jsonPath("$.nameFr").value("Endocrinologie"));
+    }
+
+    @Test
     void getByMissingIdReturns404() throws Exception {
         mockMvc.perform(get("/api/specialties/{id}", 999999))
                 .andExpect(status().isNotFound())

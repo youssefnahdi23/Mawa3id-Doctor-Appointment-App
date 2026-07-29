@@ -21,8 +21,12 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
             SELECT d FROM Doctor d
             WHERE (:specialtyId IS NULL OR d.specialty.id = :specialtyId)
               AND (:namePattern IS NULL OR LOWER(d.name) LIKE :namePattern)
+              AND (:cnam IS NULL OR d.cnamConventionne = :cnam)
+              AND (:governorate IS NULL OR d.governorate = :governorate)
             """)
     Page<Doctor> search(@Param("specialtyId") Long specialtyId,
                         @Param("namePattern") String namePattern,
+                        @Param("cnam") Boolean cnam,
+                        @Param("governorate") Governorate governorate,
                         Pageable pageable);
 }

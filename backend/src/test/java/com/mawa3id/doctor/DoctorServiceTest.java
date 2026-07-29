@@ -57,31 +57,43 @@ class DoctorServiceTest {
     @Test
     void searchWithBlankQueryPassesNullNamePattern() {
         // Blank q -> null pattern (avoids LOWER(NULL) in SQL); the repository is the sink.
-        when(doctorRepository.search(eq(5L), patternCaptor.capture(), any(Pageable.class)))
+        when(doctorRepository.search(eq(5L), patternCaptor.capture(), any(), any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
 
-        doctorService.search(5L, "   ", pageable);
+        doctorService.search(5L, "   ", null, null, pageable);
 
         assertThat(patternCaptor.getValue()).isNull();
     }
 
     @Test
     void searchWithQueryTrimsLowercasesAndWrapsInLikeWildcards() {
-        when(doctorRepository.search(any(), patternCaptor.capture(), any(Pageable.class)))
+        when(doctorRepository.search(any(), patternCaptor.capture(), any(), any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
 
-        doctorService.search(null, "  SkIn  ", pageable);
+        doctorService.search(null, "  SkIn  ", null, null, pageable);
 
         assertThat(patternCaptor.getValue()).isEqualTo("%skin%");
+    }
+
+    @Test
+    void searchPassesCnamAndGovernorateFiltersThrough() {
+        Doctor doctor = sampleDoctor(new Specialty("Cardiology", "Heart"));
+        // The stub only matches when cnam=true and governorate=SFAX are threaded through.
+        when(doctorRepository.search(any(), any(), eq(Boolean.TRUE), eq(Governorate.SFAX), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(doctor)));
+
+        Page<Doctor> result = doctorService.search(null, null, true, Governorate.SFAX, pageable);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test
     void searchReturnsRepositoryPage() {
         Doctor doctor = sampleDoctor(new Specialty("Cardiology", "Heart"));
         Page<Doctor> page = new PageImpl<>(List.of(doctor));
-        when(doctorRepository.search(any(), any(), any(Pageable.class))).thenReturn(page);
+        when(doctorRepository.search(any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
 
-        assertThat(doctorService.search(null, null, pageable).getTotalElements()).isEqualTo(1);
+        assertThat(doctorService.search(null, null, null, null, pageable).getTotalElements()).isEqualTo(1);
     }
 
     @Test
@@ -91,7 +103,8 @@ class DoctorServiceTest {
         when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
 
         Doctor result = doctorService.update(1L, new DoctorUpdateRequest(
-                "Dr After", null, "New Clinic", "8-16", "+212600", "bio", null, null));
+                "Dr After", null, "New Clinic", "8-16", "+212600", "bio", null, null,
+                null, null, null, null));
 
         assertThat(result.getName()).isEqualTo("Dr After");
         assertThat(result.getSpecialty()).isSameAs(original);
@@ -99,6 +112,8 @@ class DoctorServiceTest {
         assertThat(result.getAcceptanceMode()).isEqualTo(AcceptanceMode.MANUAL);
         // slotDurationMinutes null -> unchanged from the entity default (30).
         assertThat(result.getSlotDurationMinutes()).isEqualTo(30);
+        // cnamConventionne null -> unchanged from the entity default (false).
+        assertThat(result.isCnamConventionne()).isFalse();
     }
 
     @Test
@@ -109,11 +124,45 @@ class DoctorServiceTest {
         when(specialtyRepository.findById(9L)).thenReturn(Optional.of(derma));
 
         Doctor result = doctorService.update(1L, new DoctorUpdateRequest(
-                "Dr After", 9L, "New Clinic", "8-16", "+212600", "bio", AcceptanceMode.AUTO, 45));
+                "Dr After", 9L, "New Clinic", "8-16", "+212600", "bio", AcceptanceMode.AUTO, 45,
+                true, Governorate.SFAX, 40, List.of("ar", "FR")));
 
         assertThat(result.getSpecialty()).isSameAs(derma);
         assertThat(result.getAcceptanceMode()).isEqualTo(AcceptanceMode.AUTO);
         assertThat(result.getSlotDurationMinutes()).isEqualTo(45);
+        assertThat(result.isCnamConventionne()).isTrue();
+        assertThat(result.getGovernorate()).isEqualTo(Governorate.SFAX);
+        assertThat(result.getConsultationFee()).isEqualTo(40);
+        // Languages are upper-cased, deduped, and joined for storage.
+        assertThat(result.getLanguageList()).containsExactly("AR", "FR");
+    }
+
+    @Test
+    void updateWithUnsupportedLanguageThrowsBadRequest() {
+        Doctor doctor = sampleDoctor(new Specialty("Cardiology", "Heart"));
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
+
+        assertThatThrownBy(() -> doctorService.update(1L, new DoctorUpdateRequest(
+                "Dr After", null, null, null, null, null, null, null,
+                null, null, null, List.of("es"))))
+                .isInstanceOf(com.mawa3id.common.ApiException.class);
+    }
+
+    @Test
+    void updateClearsGovernorateAndFeeWhenNull() {
+        Specialty original = new Specialty("Cardiology", "Heart");
+        Doctor doctor = sampleDoctor(original);
+        doctor.setGovernorate(Governorate.TUNIS);
+        doctor.setConsultationFee(50);
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
+
+        Doctor result = doctorService.update(1L, new DoctorUpdateRequest(
+                "Dr After", null, null, null, null, null, null, null,
+                null, null, null, null));
+
+        // governorate and fee are absolute (not skip-when-null) so blanks clear them.
+        assertThat(result.getGovernorate()).isNull();
+        assertThat(result.getConsultationFee()).isNull();
     }
 
     @Test
@@ -123,7 +172,8 @@ class DoctorServiceTest {
         when(specialtyRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> doctorService.update(1L, new DoctorUpdateRequest(
-                "Dr After", 999L, null, null, null, null, null, null)))
+                "Dr After", 999L, null, null, null, null, null, null,
+                null, null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

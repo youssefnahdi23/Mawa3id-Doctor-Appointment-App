@@ -35,12 +35,14 @@ public class DoctorController {
     public Page<DoctorSummary> list(
             @RequestParam(required = false) Long specialtyId,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean cnam,
+            @RequestParam(required = false) Governorate governorate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(Math.max(page, 0),
                 Math.min(Math.max(size, 1), MAX_PAGE_SIZE), Sort.by("name"));
-        return doctorService.search(specialtyId, q, pageable).map(DoctorSummary::from);
+        return doctorService.search(specialtyId, q, cnam, governorate, pageable).map(DoctorSummary::from);
     }
 
     @GetMapping("/{id}")
