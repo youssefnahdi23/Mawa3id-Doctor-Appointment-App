@@ -43,6 +43,7 @@ void main() {
     when(() => repo.updateMe(
           fullName: any(named: 'fullName'),
           dateOfBirth: any(named: 'dateOfBirth'),
+          phone: any(named: 'phone'),
         )).thenAnswer((_) async => _patient);
 
     await tester.pumpWidget(wrapWithApp(const PatientProfileScreen(),
@@ -58,6 +59,7 @@ void main() {
     final captured = verify(() => repo.updateMe(
           fullName: captureAny(named: 'fullName'),
           dateOfBirth: any(named: 'dateOfBirth'),
+          phone: any(named: 'phone'),
         )).captured;
     expect(captured.single, 'Sami Ben Updated');
   });
