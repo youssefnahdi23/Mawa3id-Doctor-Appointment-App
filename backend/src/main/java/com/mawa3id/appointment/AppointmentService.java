@@ -59,10 +59,11 @@ public class AppointmentService {
         Appointment saved = appointmentRepository.save(
                 new Appointment(doctor, patient, startTime, endTime, status, reason));
 
-        String note = status == AppointmentStatus.ACCEPTED
-                ? "New appointment booked with " + patient.getFullName() + " at " + startTime
-                : "New appointment request from " + patient.getFullName() + " at " + startTime;
-        notificationService.record(doctor.getUser(), NotificationType.APPOINTMENT_BOOKED, note, saved);
+        String bodyKey = status == AppointmentStatus.ACCEPTED
+                ? "notification.booked.confirmed.body"
+                : "notification.booked.request.body";
+        notificationService.record(doctor.getUser(), NotificationType.APPOINTMENT_BOOKED, bodyKey,
+                new Object[]{patient.getFullName(), startTime}, saved);
         return AppointmentResponse.from(saved);
     }
 
@@ -70,7 +71,7 @@ public class AppointmentService {
     public AppointmentResponse accept(Long doctorUserId, Long appointmentId) {
         Appointment appointment = transition(doctorUserId, appointmentId, AppointmentStatus.ACCEPTED);
         notificationService.record(appointment.getPatient().getUser(), NotificationType.APPOINTMENT_ACCEPTED,
-                "Your appointment at " + appointment.getStartTime() + " was accepted", appointment);
+                "notification.accepted.body", new Object[]{appointment.getStartTime()}, appointment);
         return AppointmentResponse.from(appointment);
     }
 
@@ -78,7 +79,7 @@ public class AppointmentService {
     public AppointmentResponse reject(Long doctorUserId, Long appointmentId) {
         Appointment appointment = transition(doctorUserId, appointmentId, AppointmentStatus.REJECTED);
         notificationService.record(appointment.getPatient().getUser(), NotificationType.APPOINTMENT_REJECTED,
-                "Your appointment at " + appointment.getStartTime() + " was rejected", appointment);
+                "notification.rejected.body", new Object[]{appointment.getStartTime()}, appointment);
         return AppointmentResponse.from(appointment);
     }
 
@@ -92,7 +93,7 @@ public class AppointmentService {
         }
         appointment.setStatus(AppointmentStatus.COMPLETED);
         notificationService.record(appointment.getPatient().getUser(), NotificationType.APPOINTMENT_COMPLETED,
-                "Your visit at " + appointment.getStartTime() + " was completed", appointment);
+                "notification.completed.body", new Object[]{appointment.getStartTime()}, appointment);
         return AppointmentResponse.from(appointment);
     }
 
@@ -129,7 +130,7 @@ public class AppointmentService {
                 : appointment.getPatient().getUser();
         String who = cancelledByPatient ? appointment.getPatient().getFullName() : appointment.getDoctor().getName();
         notificationService.record(recipient, NotificationType.APPOINTMENT_CANCELLED,
-                "Appointment at " + appointment.getStartTime() + " was cancelled by " + who, appointment);
+                "notification.cancelled.body", new Object[]{appointment.getStartTime(), who}, appointment);
         return AppointmentResponse.from(appointment);
     }
 

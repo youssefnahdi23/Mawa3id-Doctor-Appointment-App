@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class NotificationService {
@@ -23,27 +24,37 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final AppointmentRepository appointmentRepository;
     private final NotificationProperties properties;
+    private final NotificationMessages messages;
     private final ApplicationEventPublisher events;
 
     public NotificationService(NotificationRepository notificationRepository,
                                AppointmentRepository appointmentRepository,
                                NotificationProperties properties,
+                               NotificationMessages messages,
                                ApplicationEventPublisher events) {
         this.notificationRepository = notificationRepository;
         this.appointmentRepository = appointmentRepository;
         this.properties = properties;
+        this.messages = messages;
         this.events = events;
     }
 
     /**
-     * Persist a single notification. Called from within other services' transactions.
-     * Publishes a {@link NotificationCreatedEvent} so push delivery is dispatched after the
-     * surrounding transaction commits.
+     * Persist a single notification, rendering the title and body in the recipient's
+     * language ({@code bodyKey} + {@code args} are resolved via {@link NotificationMessages}).
+     * Called from within other services' transactions. Publishes a
+     * {@link NotificationCreatedEvent} — carrying the localized title/body — so push delivery
+     * is dispatched after the surrounding transaction commits.
      */
     @Transactional
-    public Notification record(User recipient, NotificationType type, String message, Appointment appointment) {
-        Notification saved = notificationRepository.save(new Notification(recipient, type, message, appointment));
-        events.publishEvent(NotificationCreatedEvent.from(saved));
+    public Notification record(User recipient, NotificationType type, String bodyKey, Object[] args,
+                               Appointment appointment) {
+        Locale locale = messages.localeFor(recipient);
+        String body = messages.body(bodyKey, args, locale);
+        String title = messages.title(type, locale);
+        Notification saved = notificationRepository.save(new Notification(recipient, type, body, appointment));
+        Long appointmentId = appointment != null ? appointment.getId() : null;
+        events.publishEvent(new NotificationCreatedEvent(recipient.getId(), type, title, body, appointmentId));
         return saved;
     }
 
@@ -94,9 +105,11 @@ public class NotificationService {
                     appointment.getId(), NotificationType.APPOINTMENT_REMINDER)) {
                 continue;
             }
-            String message = "Reminder: your appointment is at " + appointment.getStartTime();
-            record(appointment.getPatient().getUser(), NotificationType.APPOINTMENT_REMINDER, message, appointment);
-            record(appointment.getDoctor().getUser(), NotificationType.APPOINTMENT_REMINDER, message, appointment);
+            Object[] args = {appointment.getStartTime()};
+            record(appointment.getPatient().getUser(), NotificationType.APPOINTMENT_REMINDER,
+                    "notification.reminder.body", args, appointment);
+            record(appointment.getDoctor().getUser(), NotificationType.APPOINTMENT_REMINDER,
+                    "notification.reminder.body", args, appointment);
             sent += 2;
         }
         return sent;
