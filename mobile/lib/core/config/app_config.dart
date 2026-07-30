@@ -31,4 +31,23 @@ class AppConfig {
   static Uri legalUrl(String document, String languageCode) => Uri.parse(
         '$legalBaseUrl/legal/$document?lang=$languageCode',
       );
+
+  static const _definedRepoUrl = String.fromEnvironment('REPO_URL');
+
+  /// Public source repository for this community project. Override with
+  /// `--dart-define=REPO_URL=https://github.com/org/repo`.
+  static String get repoUrl => _definedRepoUrl.isNotEmpty
+      ? _definedRepoUrl
+      : 'https://github.com/youssefnahdi23/Mawa3id-Doctor-Appointment-App';
+
+  static Uri get repoUri => Uri.parse(repoUrl);
+
+  /// The contributor guide and the open-issues list, derived from [repoUrl].
+  static Uri get contributingUri => Uri.parse('$repoUrl/blob/main/CONTRIBUTING.md');
+
+  static Uri get issuesUri => Uri.parse('$repoUrl/issues');
+
+  /// App version reported with feedback and shown in About. Keep in sync with
+  /// `version:` in pubspec.yaml (package_info_plus is not a dependency).
+  static const appVersion = '1.0.0';
 }

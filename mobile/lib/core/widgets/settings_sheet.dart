@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../l10n/l10n.dart';
 import '../l10n/locale_controller.dart';
@@ -56,6 +57,17 @@ class _SettingsSheet extends ConsumerWidget {
             title: Text(l10n.theme),
             trailing: _TrailingValue(_themeLabel(l10n, themeMode)),
             onTap: () => _pickTheme(context, ref, themeMode),
+          ),
+          ListTile(
+            leading: const Icon(Icons.groups_outlined),
+            title: Text(l10n.communityTitle),
+            onTap: () {
+              // Capture the router before popping the sheet; the sheet's own
+              // context is unmounted once it closes.
+              final router = GoRouter.of(context);
+              Navigator.of(context).pop();
+              router.push('/community');
+            },
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
