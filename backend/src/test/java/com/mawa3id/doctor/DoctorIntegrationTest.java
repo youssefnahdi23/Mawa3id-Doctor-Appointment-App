@@ -75,7 +75,7 @@ class DoctorIntegrationTest {
 
         String update = """
                 {"name":"Dr After","specialtyId":%d,"cabinetAddress":"12 Main St",
-                 "workingHours":"Mon-Fri 9-17","phone":"+212600000000",
+                 "workingHours":"Mon-Fri 9-17","phone":"+21620000000",
                  "bio":"Experienced","acceptanceMode":"AUTO"}
                 """.formatted(dermatologyId);
 

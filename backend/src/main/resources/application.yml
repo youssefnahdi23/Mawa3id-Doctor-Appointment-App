@@ -93,8 +93,8 @@ mawa3id:
   clinic:
     # Single-region clinic time zone. All appointment times are clinic-local and every "now"
     # comparison (slot computation, bookability, reminders) is evaluated in this zone rather
-    # than the JVM default. IANA zone id, e.g. Africa/Casablanca.
-    zone: ${CLINIC_ZONE:UTC}
+    # than the JVM default. IANA zone id; defaults to Tunisia.
+    zone: ${CLINIC_ZONE:Africa/Tunis}
   notifications:
     reminder:
       # Scheduled job that reminds both parties of upcoming ACCEPTED appointments. The scan

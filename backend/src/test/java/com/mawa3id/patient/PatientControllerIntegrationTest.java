@@ -58,19 +58,32 @@ class PatientControllerIntegrationTest {
         String token = registerPatient("upd@example.com", "Before Name", "1988-03-03");
 
         String body = """
-                {"fullName":"After Name","dateOfBirth":"1992-07-07"}
+                {"fullName":"After Name","dateOfBirth":"1992-07-07","phone":"+21620123456"}
                 """;
         mockMvc.perform(put("/api/patients/me")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fullName").value("After Name"))
-                .andExpect(jsonPath("$.dateOfBirth").value("1992-07-07"));
+                .andExpect(jsonPath("$.dateOfBirth").value("1992-07-07"))
+                .andExpect(jsonPath("$.phone").value("+21620123456"));
 
         // Persisted across requests
         mockMvc.perform(get("/api/patients/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fullName").value("After Name"));
+                .andExpect(jsonPath("$.fullName").value("After Name"))
+                .andExpect(jsonPath("$.phone").value("+21620123456"));
+    }
+
+    @Test
+    void invalidPhoneIsRejected() throws Exception {
+        String token = registerPatient("badphone@example.com", "Bad Phone", "1988-03-03");
+        mockMvc.perform(put("/api/patients/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"X\",\"phone\":\"12345\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.phone").isNotEmpty());
     }
 
     @Test

@@ -28,7 +28,7 @@ services:
       # Refuse to boot with a throwaway signing key in a real deployment.
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_FAIL_ON_MISSING_SECRET: ${JWT_FAIL_ON_MISSING_SECRET:-true}
-      CLINIC_ZONE: ${CLINIC_ZONE:-UTC}
+      CLINIC_ZONE: ${CLINIC_ZONE:-Africa/Tunis}
       # Optional donation settings (card donations stay disabled unless a Stripe key is set).
       DONATIONS_ENABLED: ${DONATIONS_ENABLED:-true}
       PATREON_URL: ${PATREON_URL:-}
