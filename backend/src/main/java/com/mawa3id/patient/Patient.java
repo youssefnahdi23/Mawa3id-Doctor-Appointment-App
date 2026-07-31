@@ -33,6 +33,9 @@ public class Patient {
     @Column(name = "patient_code", nullable = false, unique = true, length = 20)
     private String patientCode;
 
+    @Column(length = 40)
+    private String phone;
+
     protected Patient() {
     }
 
@@ -69,5 +72,13 @@ public class Patient {
 
     public String getPatientCode() {
         return patientCode;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 }

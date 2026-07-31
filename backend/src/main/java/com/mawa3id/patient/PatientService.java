@@ -32,6 +32,7 @@ public class PatientService {
         if (request.dateOfBirth() != null) {
             patient.setDateOfBirth(request.dateOfBirth());
         }
+        patient.setPhone(request.phone());
         return patient;
     }
 

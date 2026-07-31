@@ -9,7 +9,8 @@ public record PatientResponse(
         String email,
         String fullName,
         LocalDate dateOfBirth,
-        String patientCode
+        String patientCode,
+        String phone
 ) {
     public static PatientResponse from(Patient patient) {
         return new PatientResponse(
@@ -17,6 +18,7 @@ public record PatientResponse(
                 patient.getUser().getEmail(),
                 patient.getFullName(),
                 patient.getDateOfBirth(),
-                patient.getPatientCode());
+                patient.getPatientCode(),
+                patient.getPhone());
     }
 }

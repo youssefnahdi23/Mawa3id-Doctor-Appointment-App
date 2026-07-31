@@ -24,6 +24,7 @@ class PatientProfileScreen extends ConsumerStatefulWidget {
 class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullName = TextEditingController();
+  final _phone = TextEditingController();
   DateTime? _dateOfBirth;
 
   bool _seeded = false;
@@ -34,11 +35,13 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
   @override
   void dispose() {
     _fullName.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
   void _seed(PatientResponse patient) {
     _fullName.text = patient.fullName;
+    _phone.text = patient.phone ?? '';
     _dateOfBirth = patient.dateOfBirth;
     _seeded = true;
   }
@@ -65,6 +68,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
       await ref.read(patientRepositoryProvider).updateMe(
             fullName: _fullName.text.trim(),
             dateOfBirth: _dateOfBirth,
+            phone: _phone.text.trim(),
           );
       if (!mounted) return;
       ref.invalidate(myPatientProfileProvider);
@@ -132,6 +136,14 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
                         validator: (v) => v == null || v.trim().isEmpty
                             ? l10n.validationRequired
                             : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _phone,
+                        decoration:
+                            InputDecoration(labelText: l10n.phoneOptional),
+                        keyboardType: TextInputType.phone,
+                        forceErrorText: _fieldErrors['phone'],
                       ),
                       const SizedBox(height: 16),
                       OutlinedButton.icon(

@@ -1,5 +1,6 @@
 package com.mawa3id.doctor.dto;
 
+import com.mawa3id.common.validation.TunisianPhone;
 import com.mawa3id.doctor.AcceptanceMode;
 import com.mawa3id.doctor.Governorate;
 import jakarta.validation.constraints.Max;
@@ -14,7 +15,7 @@ public record DoctorUpdateRequest(
         Long specialtyId,
         @Size(max = 300) String cabinetAddress,
         @Size(max = 500) String workingHours,
-        @Size(max = 40) String phone,
+        @Size(max = 40) @TunisianPhone String phone,
         @Size(max = 1000) String bio,
         AcceptanceMode acceptanceMode,
         @Min(5) @Max(240) Integer slotDurationMinutes,

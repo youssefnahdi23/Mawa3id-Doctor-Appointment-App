@@ -12,6 +12,7 @@ class PatientResponse {
     required this.fullName,
     required this.patientCode,
     this.dateOfBirth,
+    this.phone,
   });
 
   factory PatientResponse.fromJson(Map<String, dynamic> json) =>
@@ -24,4 +25,6 @@ class PatientResponse {
 
   /// Backend `LocalDate` (`yyyy-MM-dd`); nullable for parity with the API.
   final DateTime? dateOfBirth;
+
+  final String? phone;
 }

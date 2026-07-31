@@ -60,10 +60,11 @@ class PatientServiceTest {
         when(patientRepository.findByUserId(1L)).thenReturn(Optional.of(patient));
 
         Patient result = patientService.update(1L,
-                new PatientUpdateRequest("Alice Updated", LocalDate.of(1991, 1, 1)));
+                new PatientUpdateRequest("Alice Updated", LocalDate.of(1991, 1, 1), "20123456"));
 
         assertThat(result.getFullName()).isEqualTo("Alice Updated");
         assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1991, 1, 1));
+        assertThat(result.getPhone()).isEqualTo("20123456");
     }
 
     @Test
@@ -72,7 +73,7 @@ class PatientServiceTest {
         when(patientRepository.findByUserId(1L)).thenReturn(Optional.of(patient));
 
         Patient result = patientService.update(1L,
-                new PatientUpdateRequest("Alice Only Name", null));
+                new PatientUpdateRequest("Alice Only Name", null, null));
 
         assertThat(result.getFullName()).isEqualTo("Alice Only Name");
         assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 5, 20));

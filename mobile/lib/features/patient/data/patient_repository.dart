@@ -28,6 +28,7 @@ class PatientRepository {
   Future<PatientResponse> updateMe({
     required String fullName,
     DateTime? dateOfBirth,
+    String? phone,
   }) {
     return apiCall(() async {
       final response = await _dio.put<Map<String, dynamic>>(
@@ -35,6 +36,7 @@ class PatientRepository {
         data: {
           'fullName': fullName,
           if (dateOfBirth != null) 'dateOfBirth': formatIsoDate(dateOfBirth),
+          if (phone != null) 'phone': phone,
         },
       );
       return PatientResponse.fromJson(response.data!);

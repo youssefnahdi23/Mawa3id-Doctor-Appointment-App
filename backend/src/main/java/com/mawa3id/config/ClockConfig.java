@@ -16,7 +16,7 @@ import java.time.ZoneId;
 public class ClockConfig {
 
     @Bean
-    public Clock clinicClock(@Value("${mawa3id.clinic.zone:UTC}") String zone) {
+    public Clock clinicClock(@Value("${mawa3id.clinic.zone:Africa/Tunis}") String zone) {
         return Clock.system(ZoneId.of(zone));
     }
 }

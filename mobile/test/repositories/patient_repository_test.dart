@@ -62,4 +62,15 @@ void main() {
         data: captureAny(named: 'data'))).captured;
     expect(captured[1], {'fullName': 'Sami Ben'});
   });
+
+  test('updateMe() includes phone when provided', () async {
+    when(() => dio.put<Map<String, dynamic>>(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => _okPatient());
+
+    await repository.updateMe(fullName: 'Sami Ben', phone: '20123456');
+
+    final captured = verify(() => dio.put<Map<String, dynamic>>(captureAny(),
+        data: captureAny(named: 'data'))).captured;
+    expect(captured[1], {'fullName': 'Sami Ben', 'phone': '20123456'});
+  });
 }
