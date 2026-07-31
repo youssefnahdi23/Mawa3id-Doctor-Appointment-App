@@ -18,23 +18,24 @@ class ShellTab {
 }
 
 final patientTabs = [
-  ShellTab(icon: Icons.search, label: (l10n) => l10n.tabDoctors),
-  ShellTab(icon: Icons.event, label: (l10n) => l10n.tabAppointments),
+  ShellTab(icon: Icons.home_outlined, label: (l10n) => l10n.tabHome),
+  ShellTab(icon: Icons.search, label: (l10n) => l10n.tabFind),
+  ShellTab(icon: Icons.calendar_today_outlined, label: (l10n) => l10n.tabBookings),
+  // Notifications live inside Profile now; surface the unread badge here.
   ShellTab(
-      icon: Icons.notifications,
-      label: (l10n) => l10n.tabNotifications,
+      icon: Icons.person_outline,
+      label: (l10n) => l10n.tabProfile,
       showUnreadBadge: true),
-  ShellTab(icon: Icons.person, label: (l10n) => l10n.tabProfile),
 ];
 
 final doctorTabs = [
-  ShellTab(icon: Icons.event, label: (l10n) => l10n.tabAppointments),
-  ShellTab(icon: Icons.schedule, label: (l10n) => l10n.tabAvailability),
+  ShellTab(icon: Icons.event_outlined, label: (l10n) => l10n.tabAppointments),
+  ShellTab(icon: Icons.schedule_outlined, label: (l10n) => l10n.tabAvailability),
   ShellTab(
-      icon: Icons.notifications,
+      icon: Icons.notifications_outlined,
       label: (l10n) => l10n.tabNotifications,
       showUnreadBadge: true),
-  ShellTab(icon: Icons.person, label: (l10n) => l10n.tabProfile),
+  ShellTab(icon: Icons.person_outline, label: (l10n) => l10n.tabProfile),
 ];
 
 /// Bottom-tab scaffold for both roles; only the tab set differs.

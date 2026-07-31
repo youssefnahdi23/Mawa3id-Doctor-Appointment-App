@@ -5,13 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/l10n.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_skeleton.dart';
-import '../../../core/widgets/rating_stars.dart';
 import '../../../core/widgets/session_actions.dart';
 import '../data/doctor_reference.dart';
 import '../state/doctors_providers.dart';
+import 'doctor_card.dart';
 
 class DoctorListScreen extends ConsumerStatefulWidget {
   const DoctorListScreen({super.key});
@@ -29,8 +30,7 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
   void initState() {
     super.initState();
     _scroll.addListener(() {
-      if (_scroll.position.pixels >
-          _scroll.position.maxScrollExtent - 300) {
+      if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 300) {
         ref.read(doctorListControllerProvider.notifier).loadMore();
       }
     });
@@ -58,37 +58,36 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
     final listState = ref.watch(doctorListControllerProvider);
     final controller = ref.read(doctorListControllerProvider.notifier);
     final specialties = ref.watch(specialtiesProvider);
-    // id -> specialty, so list rows can render the label in the active language.
     final specialtyById = {
       for (final s in specialties.valueOrNull ?? []) s.id: s,
     };
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.tabDoctors),
+        title: Text(l10n.tabFind),
         actions: sessionAppBarActions(context, ref),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
             child: TextField(
               controller: _search,
               onChanged: _onQueryChanged,
               decoration: InputDecoration(
                 hintText: l10n.searchDoctorsHint,
                 prefixIcon: const Icon(Icons.search),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(28)),
                 isDense: true,
               ),
             ),
           ),
+          // Specialty filter rail.
           SizedBox(
-            height: 56,
+            height: 44,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               children: [
                 FilterChip(
                   label: Text(l10n.allSpecialties),
@@ -97,46 +96,54 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                 ),
                 for (final specialty in specialties.valueOrNull ?? [])
                   Padding(
-                    padding: const EdgeInsetsDirectional.only(start: 8),
+                    padding: const EdgeInsetsDirectional.only(start: AppSpacing.sm),
                     child: FilterChip(
                       label: Text(specialty.localizedName(languageCode)),
                       selected: controller.specialtyId == specialty.id,
-                      onSelected: (selected) => controller
-                          .setSpecialty(selected ? specialty.id : null),
+                      onSelected: (selected) =>
+                          controller.setSpecialty(selected ? specialty.id : null),
                     ),
                   ),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          // CNAM + governorate ("distance") filters.
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Row(
               children: [
                 FilterChip(
+                  avatar: const Icon(Icons.verified_outlined, size: 18),
                   label: Text(l10n.cnamBadge),
                   selected: controller.cnamOnly,
                   onSelected: controller.setCnamOnly,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: DropdownButton<String?>(
-                    isExpanded: true,
-                    value: controller.governorate,
-                    hint: Text(l10n.allGovernorates),
-                    items: [
-                      DropdownMenuItem(
-                          value: null, child: Text(l10n.allGovernorates)),
-                      for (final code in kGovernorates)
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      isExpanded: true,
+                      value: controller.governorate,
+                      icon: const Icon(Icons.expand_more),
+                      hint: Text(l10n.allGovernorates),
+                      items: [
                         DropdownMenuItem(
-                            value: code,
-                            child: Text(governorateLabel(l10n, code))),
-                    ],
-                    onChanged: controller.setGovernorate,
+                            value: null, child: Text(l10n.allGovernorates)),
+                        for (final code in kGovernorates)
+                          DropdownMenuItem(
+                              value: code,
+                              child: Text(governorateLabel(l10n, code))),
+                      ],
+                      onChanged: controller.setGovernorate,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: listState.when(
               loading: () => const SkeletonList(),
@@ -154,47 +161,44 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                 return RefreshIndicator(
                   onRefresh: () async =>
                       ref.invalidate(doctorListControllerProvider),
-                  child: ListView.builder(
+                  child: ListView.separated(
                     controller: _scroll,
-                    itemCount: data.items.length + (data.isLast ? 0 : 1),
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0,
+                        AppSpacing.lg, AppSpacing.xl),
+                    itemCount: data.items.length + 1 + (data.isLast ? 0 : 1),
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.md),
                     itemBuilder: (context, index) {
-                      if (index >= data.items.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child:
-                              Center(child: CircularProgressIndicator()),
+                      if (index == 0) {
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: Text(
+                            l10n.availableDoctors,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
                         );
                       }
-                      final doctor = data.items[index];
+                      final i = index - 1;
+                      if (i >= data.items.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(AppSpacing.lg),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final doctor = data.items[i];
                       final specialtyLabel = doctor.specialtyId != null
                           ? specialtyById[doctor.specialtyId]
                                   ?.localizedName(languageCode) ??
                               doctor.specialtyName
                           : doctor.specialtyName;
-                      return ListTile(
-                        leading: CircleAvatar(
-                            child: Text(doctor.name.isEmpty
-                                ? '?'
-                                : doctor.name[0].toUpperCase())),
-                        title: Text(doctor.name),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (specialtyLabel != null) Text(specialtyLabel),
-                            RatingStars(
-                              average: doctor.ratingAverage,
-                              count: doctor.ratingCount,
-                            ),
-                            _DoctorMetaRow(
-                              cnam: doctor.cnamConventionne,
-                              governorate: doctor.governorate,
-                              consultationFee: doctor.consultationFee,
-                            ),
-                          ],
-                        ),
-                        isThreeLine: true,
-                        onTap: () =>
-                            context.go('/p/doctors/${doctor.userId}'),
+                      return DoctorCard(
+                        doctor: doctor,
+                        specialtyLabel: specialtyLabel,
+                        onTap: () => context.go('/p/doctors/${doctor.userId}'),
                       );
                     },
                   ),
@@ -204,49 +208,6 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Compact CNAM / governorate / fee strip shown under a doctor in the list.
-class _DoctorMetaRow extends StatelessWidget {
-  const _DoctorMetaRow({
-    required this.cnam,
-    required this.governorate,
-    required this.consultationFee,
-  });
-
-  final bool cnam;
-  final String? governorate;
-  final int? consultationFee;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final govLabel = governorateLabel(l10n, governorate);
-    final items = <Widget>[
-      if (cnam)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(l10n.cnamBadge,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
-        ),
-      if (govLabel.isNotEmpty)
-        Text('📍 $govLabel', style: theme.textTheme.bodySmall),
-      if (consultationFee != null)
-        Text('$consultationFee ${l10n.consultationFeeUnit}',
-            style: theme.textTheme.bodySmall),
-    ];
-    if (items.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Wrap(spacing: 8, runSpacing: 4, children: items),
     );
   }
 }
