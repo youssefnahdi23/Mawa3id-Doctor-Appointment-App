@@ -97,6 +97,66 @@ public class AppointmentService {
         return AppointmentResponse.from(appointment);
     }
 
+    /** Record that the patient did not attend: doctor-owned, only from ACCEPTED. */
+    @Transactional
+    public AppointmentResponse markNoShow(Long doctorUserId, Long appointmentId) {
+        Appointment appointment = getOwnedByDoctor(appointmentId, doctorUserId);
+        if (appointment.getStatus() != AppointmentStatus.ACCEPTED) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Only an accepted appointment can be marked as a no-show");
+        }
+        appointment.setStatus(AppointmentStatus.NO_SHOW);
+        notificationService.record(appointment.getPatient().getUser(), NotificationType.APPOINTMENT_NO_SHOW,
+                "notification.no_show.body", new Object[]{appointment.getStartTime()}, appointment);
+        return AppointmentResponse.from(appointment);
+    }
+
+    /**
+     * Move an active appointment to a new open slot. Either party may reschedule; the
+     * appointment re-enters the doctor's acceptance flow (MANUAL → PENDING, AUTO → ACCEPTED)
+     * and the other party is notified.
+     */
+    @Transactional
+    public AppointmentResponse reschedule(Long userId, Long appointmentId, LocalDateTime newStartTime) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found: " + appointmentId));
+        boolean isPatient = appointment.getPatient().getUserId().equals(userId);
+        boolean isDoctor = appointment.getDoctor().getUserId().equals(userId);
+        if (!isPatient && !isDoctor) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not your appointment");
+        }
+        if (!AppointmentStatus.ACTIVE.contains(appointment.getStatus())) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Only pending or accepted appointments can be rescheduled");
+        }
+        if (newStartTime.equals(appointment.getStartTime())) {
+            return AppointmentResponse.from(appointment); // no change; avoids a self-conflict
+        }
+
+        Doctor doctor = appointment.getDoctor();
+        Long doctorId = doctor.getUserId();
+        if (!scheduleService.isSlotBookable(doctorId, newStartTime)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "The requested time is not an open slot for this doctor");
+        }
+        if (appointmentRepository.existsByDoctorUserIdAndStartTimeAndStatusIn(
+                doctorId, newStartTime, AppointmentStatus.ACTIVE)) {
+            throw new ApiException(HttpStatus.CONFLICT, "That slot is already booked");
+        }
+
+        appointment.setStartTime(newStartTime);
+        appointment.setEndTime(newStartTime.plusMinutes(doctor.getSlotDurationMinutes()));
+        appointment.setStatus(doctor.getAcceptanceMode() == AcceptanceMode.AUTO
+                ? AppointmentStatus.ACCEPTED
+                : AppointmentStatus.PENDING);
+
+        // Notify the party who did not reschedule.
+        var recipient = isPatient ? doctor.getUser() : appointment.getPatient().getUser();
+        notificationService.record(recipient, NotificationType.APPOINTMENT_RESCHEDULED,
+                "notification.rescheduled.body", new Object[]{newStartTime}, appointment);
+        return AppointmentResponse.from(appointment);
+    }
+
     /** Accept/reject: doctor-owned, only from PENDING. Returns the mutated appointment. */
     private Appointment transition(Long doctorUserId, Long appointmentId, AppointmentStatus target) {
         Appointment appointment = getOwnedByDoctor(appointmentId, doctorUserId);

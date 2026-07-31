@@ -7,7 +7,8 @@ public enum AppointmentStatus {
     ACCEPTED,
     REJECTED,
     CANCELLED,
-    COMPLETED;
+    COMPLETED,
+    NO_SHOW;
 
     /** Statuses that occupy a slot and therefore block another booking of the same time. */
     public static final Set<AppointmentStatus> ACTIVE = Set.of(PENDING, ACCEPTED);

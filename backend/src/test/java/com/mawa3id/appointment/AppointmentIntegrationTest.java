@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -201,7 +202,138 @@ class AppointmentIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+    // ---- no-show ----
+
+    @Test
+    void doctorMarksAcceptedAsNoShow() throws Exception {
+        Doctor doctor = registerDoctor("ns-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("ns-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+
+        mockMvc.perform(put("/api/appointments/{id}/no-show", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NO_SHOW"));
+    }
+
+    @Test
+    void noShowOnPendingIsConflict() throws Exception {
+        Doctor doctor = registerDoctor("ns-pend-doc@example.com", false); // MANUAL -> PENDING
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("ns-pend-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+
+        mockMvc.perform(put("/api/appointments/{id}/no-show", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void patientCannotMarkNoShow() throws Exception {
+        Doctor doctor = registerDoctor("ns-role-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("ns-role-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+
+        mockMvc.perform(put("/api/appointments/{id}/no-show", id)
+                        .header("Authorization", "Bearer " + patient))
+                .andExpect(status().isForbidden());
+    }
+
+    // ---- reschedule ----
+
+    @Test
+    void patientReschedulesToAnotherSlotAndFreesTheOld() throws Exception {
+        Doctor doctor = registerDoctor("rs-doc@example.com", true); // AUTO
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("rs-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+
+        reschedule(patient, id, slotNineThirty)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.start", containsString("09:30")));
+
+        // The vacated 09:00 slot is bookable again.
+        book(patient, doctor.id(), slotNine).andExpect(status().isCreated());
+    }
+
+    @Test
+    void rescheduleResetsManualDoctorToPending() throws Exception {
+        Doctor doctor = registerDoctor("rs-manual-doc@example.com", false); // MANUAL
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("rs-manual-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+        mockMvc.perform(put("/api/appointments/{id}/accept", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+
+        // Moving it re-enters the acceptance flow.
+        reschedule(patient, id, slotNineThirty)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void rescheduleToTakenSlotIsConflict() throws Exception {
+        Doctor doctor = registerDoctor("rs-taken-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("rs-taken-pat@example.com");
+        long first = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+        book(patient, doctor.id(), slotNineThirty).andExpect(status().isCreated());
+
+        reschedule(patient, first, slotNineThirty).andExpect(status().isConflict());
+    }
+
+    @Test
+    void rescheduleToUnavailableTimeIsBadRequest() throws Exception {
+        Doctor doctor = registerDoctor("rs-bad-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("rs-bad-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+
+        String eight = LocalDateTime.of(nextMonday, java.time.LocalTime.of(8, 0)).toString();
+        reschedule(patient, id, eight).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void nonOwnerCannotReschedule() throws Exception {
+        Doctor doctor = registerDoctor("rs-owner-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("rs-owner-pat@example.com");
+        String other = registerPatient("rs-owner-other@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+
+        reschedule(other, id, slotNineThirty).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cannotRescheduleCompletedAppointment() throws Exception {
+        Doctor doctor = registerDoctor("rs-done-doc@example.com", true);
+        setMondayAvailability(doctor.token());
+        String patient = registerPatient("rs-done-pat@example.com");
+        long id = idOf(book(patient, doctor.id(), slotNine).andExpect(status().isCreated()).andReturn());
+        mockMvc.perform(put("/api/appointments/{id}/complete", id)
+                        .header("Authorization", "Bearer " + doctor.token()))
+                .andExpect(status().isOk());
+
+        reschedule(patient, id, slotNineThirty).andExpect(status().isConflict());
+    }
+
     // ---- helpers ----
+
+    private long idOf(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions reschedule(String token, long id, String start)
+            throws Exception {
+        return mockMvc.perform(put("/api/appointments/{id}/reschedule", id)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"startTime\":\"%s\"}".formatted(start)));
+    }
 
     private org.springframework.test.web.servlet.ResultActions book(String token, long doctorId, String start)
             throws Exception {
