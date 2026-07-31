@@ -89,6 +89,7 @@ class _AvailabilityEditorScreenState
         dayOfWeek: rule.dayOfWeek,
         startTime: isStart ? formatted : rule.startTime,
         endTime: isStart ? rule.endTime : formatted,
+        rdvOnly: rule.rdvOnly,
       );
     });
   }
@@ -138,52 +139,89 @@ class _AvailabilityEditorScreenState
                               child: Padding(
                                 padding: const EdgeInsetsDirectional
                                     .fromSTEB(16, 4, 4, 4),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: DropdownButton<Weekday>(
-                                        value: rule.dayOfWeek,
-                                        isExpanded: true,
-                                        underline: const SizedBox.shrink(),
-                                        items: [
-                                          for (final day in Weekday.values)
-                                            DropdownMenuItem(
-                                              value: day,
-                                              child: Text(
-                                                  _dayName(context, day)),
-                                            ),
-                                        ],
-                                        onChanged: (day) {
-                                          if (day == null) return;
-                                          setState(() {
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: DropdownButton<Weekday>(
+                                            value: rule.dayOfWeek,
+                                            isExpanded: true,
+                                            underline:
+                                                const SizedBox.shrink(),
+                                            items: [
+                                              for (final day
+                                                  in Weekday.values)
+                                                DropdownMenuItem(
+                                                  value: day,
+                                                  child: Text(_dayName(
+                                                      context, day)),
+                                                ),
+                                            ],
+                                            onChanged: (day) {
+                                              if (day == null) return;
+                                              setState(() {
+                                                _rules![index] =
+                                                    AvailabilityRule(
+                                                  dayOfWeek: day,
+                                                  startTime: rule.startTime,
+                                                  endTime: rule.endTime,
+                                                  rdvOnly: rule.rdvOnly,
+                                                );
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => _editTime(index,
+                                              isStart: true),
+                                          child: Text(formatMinutesAsTime(
+                                              rule.startMinutes)),
+                                        ),
+                                        const Text('–'),
+                                        TextButton(
+                                          onPressed: () => _editTime(index,
+                                              isStart: false),
+                                          child: Text(formatMinutesAsTime(
+                                              rule.endMinutes)),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                              Icons.delete_outline),
+                                          tooltip: l10n.removeRule,
+                                          onPressed: () => setState(() =>
+                                              _rules!.removeAt(index)),
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsetsDirectional
+                                          .only(bottom: 4),
+                                      child: Align(
+                                        alignment: AlignmentDirectional
+                                            .centerStart,
+                                        child: FilterChip(
+                                          avatar: Icon(
+                                            rule.rdvOnly
+                                                ? Icons.event_available
+                                                : Icons.directions_walk,
+                                            size: 18,
+                                          ),
+                                          label: Text(l10n.rdvOnlyToggle),
+                                          selected: rule.rdvOnly,
+                                          onSelected: (v) => setState(() {
                                             _rules![index] =
                                                 AvailabilityRule(
-                                              dayOfWeek: day,
+                                              dayOfWeek: rule.dayOfWeek,
                                               startTime: rule.startTime,
                                               endTime: rule.endTime,
+                                              rdvOnly: v,
                                             );
-                                          });
-                                        },
+                                          }),
+                                        ),
                                       ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _editTime(index, isStart: true),
-                                      child: Text(formatMinutesAsTime(
-                                          rule.startMinutes)),
-                                    ),
-                                    const Text('–'),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _editTime(index, isStart: false),
-                                      child: Text(formatMinutesAsTime(
-                                          rule.endMinutes)),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      tooltip: l10n.removeRule,
-                                      onPressed: () => setState(
-                                          () => _rules!.removeAt(index)),
                                     ),
                                   ],
                                 ),
