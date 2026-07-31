@@ -100,6 +100,16 @@ class AccountMenuButton extends ConsumerWidget {
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
+          value: '/community',
+          child: Row(
+            children: [
+              const Icon(Icons.groups_outlined, size: 20),
+              const SizedBox(width: 12),
+              Text(l10n.communityTitle),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: '/donate',
           child: Row(
             children: [

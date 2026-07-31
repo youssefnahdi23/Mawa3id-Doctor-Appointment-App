@@ -19,6 +19,8 @@ import '../features/availability/ui/availability_editor_screen.dart';
 import '../features/doctors/ui/doctor_detail_screen.dart';
 import '../features/doctors/ui/doctor_list_screen.dart';
 import '../features/doctors/ui/doctor_profile_screen.dart';
+import '../features/community/ui/community_screen.dart';
+import '../features/community/ui/feedback_screen.dart';
 import '../features/donations/ui/donate_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
 import '../features/patient/ui/patient_profile_screen.dart';
@@ -49,11 +51,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           location.startsWith('/register') ||
           location == '/forgot-password' ||
           location == '/reset-password';
+      // The community hub is public (contribute links); its feedback sub-route
+      // stays auth-gated. Lets the login settings sheet open it while logged out.
+      final publicInfo = location == '/community';
 
       if (session.isLoading) return location == '/splash' ? null : '/splash';
 
       final user = session.valueOrNull;
-      if (user == null) return onAuthScreen ? null : '/login';
+      if (user == null) return (onAuthScreen || publicInfo) ? null : '/login';
 
       final home =
           user.role == UserRole.doctor ? '/d/appointments' : '/p/doctors';
@@ -88,6 +93,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/verify/phone',
           builder: (_, __) => const VerifyPhoneScreen()),
       GoRoute(path: '/donate', builder: (_, __) => const DonateScreen()),
+      GoRoute(
+        path: '/community',
+        builder: (_, __) => const CommunityScreen(),
+        routes: [
+          GoRoute(
+              path: 'feedback', builder: (_, __) => const FeedbackScreen()),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) =>
             RoleShell(navigationShell: shell, tabs: patientTabs),
