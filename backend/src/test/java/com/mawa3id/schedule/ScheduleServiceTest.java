@@ -69,7 +69,11 @@ class ScheduleServiceTest {
     }
 
     private DoctorAvailability rule(Doctor doctor, DayOfWeek day, String start, String end) {
-        return new DoctorAvailability(doctor, day, LocalTime.parse(start), LocalTime.parse(end));
+        return rule(doctor, day, start, end, false);
+    }
+
+    private DoctorAvailability rule(Doctor doctor, DayOfWeek day, String start, String end, boolean rdvOnly) {
+        return new DoctorAvailability(doctor, day, LocalTime.parse(start), LocalTime.parse(end), rdvOnly);
     }
 
     @Test
@@ -160,7 +164,7 @@ class ScheduleServiceTest {
     @Test
     void replaceAvailabilityRejectsEndBeforeStart() {
         List<AvailabilityRuleRequest> rules = List.of(new AvailabilityRuleRequest(
-                DayOfWeek.MONDAY, LocalTime.of(12, 0), LocalTime.of(9, 0)));
+                DayOfWeek.MONDAY, LocalTime.of(12, 0), LocalTime.of(9, 0), false));
 
         assertThatThrownBy(() -> scheduleService.replaceAvailability(1L, rules))
                 .isInstanceOf(ApiException.class);
@@ -169,8 +173,8 @@ class ScheduleServiceTest {
     @Test
     void replaceAvailabilityRejectsOverlapOnSameDay() {
         List<AvailabilityRuleRequest> rules = List.of(
-                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(11, 0)),
-                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(12, 0)));
+                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(11, 0), false),
+                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(12, 0), false));
 
         assertThatThrownBy(() -> scheduleService.replaceAvailability(1L, rules))
                 .isInstanceOf(ApiException.class);
@@ -189,12 +193,45 @@ class ScheduleServiceTest {
                 });
 
         List<AvailabilityRuleResponse> saved = scheduleService.replaceAvailability(1L, List.of(
-                new AvailabilityRuleRequest(DayOfWeek.WEDNESDAY, LocalTime.of(9, 0), LocalTime.of(12, 0)),
-                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(14, 0), LocalTime.of(17, 0))));
+                new AvailabilityRuleRequest(DayOfWeek.WEDNESDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), false),
+                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(14, 0), LocalTime.of(17, 0), false)));
 
         // Response is sorted by day then start time: Monday before Wednesday.
         assertThat(saved).hasSize(2);
         assertThat(saved.get(0).dayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
         assertThat(saved.get(1).dayOfWeek()).isEqualTo(DayOfWeek.WEDNESDAY);
+    }
+
+    @Test
+    void replaceAvailabilityPersistsRdvOnlyPerRule() {
+        Doctor doctor = doctorWithSlot(30);
+        when(doctorService.getByUserId(1L)).thenReturn(doctor);
+        when(availabilityRepository.saveAll(org.mockito.ArgumentMatchers.<Iterable<DoctorAvailability>>any()))
+                .thenAnswer(inv -> {
+                    List<DoctorAvailability> arg = new java.util.ArrayList<>();
+                    inv.<Iterable<DoctorAvailability>>getArgument(0).forEach(arg::add);
+                    return arg;
+                });
+
+        List<AvailabilityRuleResponse> saved = scheduleService.replaceAvailability(1L, List.of(
+                new AvailabilityRuleRequest(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), true),
+                new AvailabilityRuleRequest(DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(12, 0), false)));
+
+        assertThat(saved.get(0).dayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
+        assertThat(saved.get(0).rdvOnly()).isTrue();
+        assertThat(saved.get(1).dayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+        assertThat(saved.get(1).rdvOnly()).isFalse();
+    }
+
+    @Test
+    void rdvOnlyDoesNotAffectSlotGeneration() {
+        Doctor doctor = doctorWithSlot(30);
+        when(doctorService.getByUserId(1L)).thenReturn(doctor);
+        when(availabilityRepository.findByDoctorUserIdOrderByDayOfWeekAscStartTimeAsc(1L))
+                .thenReturn(List.of(rule(doctor, DayOfWeek.MONDAY, "09:00", "12:00", true)));
+        noBookings();
+
+        // An RDV-only window still yields the same six bookable slots as a walk-in one.
+        assertThat(scheduleService.computeFreeSlots(1L, FUTURE_MONDAY, FUTURE_MONDAY)).hasSize(6);
     }
 }

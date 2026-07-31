@@ -8,6 +8,8 @@ import java.time.LocalTime;
 public record AvailabilityRuleRequest(
         @NotNull DayOfWeek dayOfWeek,
         @NotNull LocalTime startTime,
-        @NotNull LocalTime endTime
+        @NotNull LocalTime endTime,
+        // "RDVs Only" (no walk-ins). Optional for backward compatibility; absent → false.
+        boolean rdvOnly
 ) {
 }

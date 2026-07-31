@@ -43,14 +43,24 @@ public class DoctorAvailability {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    /**
+     * When true, this window is "RDVs Only" (sur rendez-vous uniquement): patients
+     * must have an appointment and cannot walk in. Informational only — bookable
+     * slots are still generated regardless of this flag.
+     */
+    @Column(name = "rdv_only", nullable = false)
+    private boolean rdvOnly;
+
     protected DoctorAvailability() {
     }
 
-    public DoctorAvailability(Doctor doctor, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+    public DoctorAvailability(Doctor doctor, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime,
+                              boolean rdvOnly) {
         this.doctor = doctor;
         this.dayOfWeek = dayOfWeek;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.rdvOnly = rdvOnly;
     }
 
     public Long getId() {
@@ -71,5 +81,9 @@ public class DoctorAvailability {
 
     public LocalTime getEndTime() {
         return endTime;
+    }
+
+    public boolean isRdvOnly() {
+        return rdvOnly;
     }
 }

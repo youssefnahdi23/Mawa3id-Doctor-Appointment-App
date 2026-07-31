@@ -91,6 +91,41 @@ class AvailabilityIntegrationTest {
     }
 
     @Test
+    void rdvOnlyFlagRoundTripsAndDoesNotChangeSlots() throws Exception {
+        String token = registerDoctor("rdv-avail@example.com");
+        long doctorId = userIdFor(token);
+
+        // Monday is RDVs-only; Tuesday omits the flag (defaults to walk-in / false).
+        String body = """
+                {"rules":[
+                  {"dayOfWeek":"MONDAY","startTime":"09:00","endTime":"12:00","rdvOnly":true},
+                  {"dayOfWeek":"TUESDAY","startTime":"09:00","endTime":"12:00"}
+                ]}
+                """;
+        mockMvc.perform(put("/api/doctors/me/availability")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].dayOfWeek").value("MONDAY"))
+                .andExpect(jsonPath("$[0].rdvOnly").value(true))
+                .andExpect(jsonPath("$[1].dayOfWeek").value("TUESDAY"))
+                .andExpect(jsonPath("$[1].rdvOnly").value(false));
+
+        // Public read exposes the flag.
+        mockMvc.perform(get("/api/doctors/{id}/availability", doctorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].rdvOnly").value(true));
+
+        // The RDV-only Monday still generates the usual 6 bookable slots.
+        LocalDate monday = LocalDate.now().plusDays(1).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        mockMvc.perform(get("/api/doctors/{id}/slots", doctorId)
+                        .param("from", monday.toString())
+                        .param("to", monday.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(6));
+    }
+
+    @Test
     void patientCannotSetAvailability() throws Exception {
         String patientToken = registerPatient("pat-avail@example.com");
         mockMvc.perform(put("/api/doctors/me/availability")
