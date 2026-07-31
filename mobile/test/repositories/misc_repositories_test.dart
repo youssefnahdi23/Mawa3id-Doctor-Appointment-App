@@ -45,7 +45,10 @@ void main() {
 
       final saved = await AvailabilityRepository(dio).updateMine(const [
         AvailabilityRule(
-            dayOfWeek: Weekday.friday, startTime: '08:00', endTime: '12:00'),
+            dayOfWeek: Weekday.friday,
+            startTime: '08:00',
+            endTime: '12:00',
+            rdvOnly: true),
       ]);
 
       expect(saved.single.startMinutes, 8 * 60);
@@ -54,7 +57,12 @@ void main() {
       expect(captured[0], '/api/doctors/me/availability');
       expect(captured[1], {
         'rules': [
-          {'dayOfWeek': 'FRIDAY', 'startTime': '08:00', 'endTime': '12:00'},
+          {
+            'dayOfWeek': 'FRIDAY',
+            'startTime': '08:00',
+            'endTime': '12:00',
+            'rdvOnly': true
+          },
         ],
       });
     });

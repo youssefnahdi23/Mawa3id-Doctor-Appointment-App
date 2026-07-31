@@ -65,7 +65,8 @@ public class ScheduleService {
         Doctor doctor = doctorService.getByUserId(doctorUserId);
         availabilityRepository.deleteByDoctorUserId(doctorUserId);
         List<DoctorAvailability> saved = availabilityRepository.saveAll(rules.stream()
-                .map(r -> new DoctorAvailability(doctor, r.dayOfWeek(), r.startTime(), r.endTime()))
+                .map(r -> new DoctorAvailability(doctor, r.dayOfWeek(), r.startTime(), r.endTime(),
+                        r.rdvOnly()))
                 .toList());
         return saved.stream()
                 .sorted(Comparator.comparing(DoctorAvailability::getDayOfWeek)

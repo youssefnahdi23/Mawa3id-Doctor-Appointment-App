@@ -30,6 +30,7 @@ class AvailabilityRule {
     required this.dayOfWeek,
     required this.startTime,
     required this.endTime,
+    this.rdvOnly = false,
   });
 
   factory AvailabilityRule.fromJson(Map<String, dynamic> json) =>
@@ -40,6 +41,11 @@ class AvailabilityRule {
   final Weekday dayOfWeek;
   final String startTime;
   final String endTime;
+
+  /// When true this window is "RDVs Only" (no walk-ins). Informational only —
+  /// online booking is unaffected. Absent in older payloads → false.
+  @JsonKey(defaultValue: false)
+  final bool rdvOnly;
 
   int get startMinutes => parseTimeToMinutes(startTime);
   int get endMinutes => parseTimeToMinutes(endTime);

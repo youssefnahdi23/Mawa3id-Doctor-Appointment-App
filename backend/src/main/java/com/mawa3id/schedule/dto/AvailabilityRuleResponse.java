@@ -8,12 +8,14 @@ import java.time.LocalTime;
 public record AvailabilityRuleResponse(
         DayOfWeek dayOfWeek,
         LocalTime startTime,
-        LocalTime endTime
+        LocalTime endTime,
+        boolean rdvOnly
 ) {
     public static AvailabilityRuleResponse from(DoctorAvailability availability) {
         return new AvailabilityRuleResponse(
                 availability.getDayOfWeek(),
                 availability.getStartTime(),
-                availability.getEndTime());
+                availability.getEndTime(),
+                availability.isRdvOnly());
     }
 }

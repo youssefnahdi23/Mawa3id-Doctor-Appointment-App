@@ -290,5 +290,9 @@
   "profileAccountSettings": "Paramètres du compte",
   "profileMedicalHistory": "Antécédents médicaux",
   "profileMedicalHistorySubtitle": "Ordonnances et diagnostics passés",
-  "profileNotificationsSubtitle": "Alertes pour vos prochaines visites"
+  "profileNotificationsSubtitle": "Alertes pour vos prochaines visites",
+  "consultationHours": "Heures de consultation",
+  "rdvOnlyLabel": "Sur RDV uniquement",
+  "walkInWelcome": "Sans rendez-vous",
+  "rdvOnlyToggle": "Sur RDV uniquement (sans visite libre)"
 }

@@ -290,5 +290,9 @@
   "profileAccountSettings": "إعدادات الحساب",
   "profileMedicalHistory": "السجل الطبي",
   "profileMedicalHistorySubtitle": "الوصفات والتشخيصات السابقة",
-  "profileNotificationsSubtitle": "تنبيهات المواعيد القادمة"
+  "profileNotificationsSubtitle": "تنبيهات المواعيد القادمة",
+  "consultationHours": "ساعات الاستشارة",
+  "rdvOnlyLabel": "بموعد فقط",
+  "walkInWelcome": "بدون موعد",
+  "rdvOnlyToggle": "بموعد فقط (بدون زيارة مباشرة)"
 }
