@@ -22,7 +22,9 @@ import '../features/doctors/ui/doctor_profile_screen.dart';
 import '../features/community/ui/community_screen.dart';
 import '../features/community/ui/feedback_screen.dart';
 import '../features/donations/ui/donate_screen.dart';
+import '../features/home/ui/home_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
+import '../features/patient/ui/patient_edit_profile_screen.dart';
 import '../features/patient/ui/patient_profile_screen.dart';
 import '../features/records/ui/patient_records_screen.dart';
 import '../features/records/ui/record_detail_screen.dart';
@@ -61,7 +63,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (user == null) return (onAuthScreen || publicInfo) ? null : '/login';
 
       final home =
-          user.role == UserRole.doctor ? '/d/appointments' : '/p/doctors';
+          user.role == UserRole.doctor ? '/d/appointments' : '/p/home';
       if (onAuthScreen || location == '/splash') return home;
       if (user.role == UserRole.patient && location.startsWith('/d')) {
         return home;
@@ -105,6 +107,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, shell) =>
             RoleShell(navigationShell: shell, tabs: patientTabs),
         branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/p/home', builder: (_, __) => const HomeScreen()),
+          ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/p/doctors',
@@ -161,13 +167,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/p/notifications',
-                builder: (_, __) => const NotificationsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-                path: '/p/profile',
-                builder: (_, __) => const PatientProfileScreen()),
+              path: '/p/profile',
+              builder: (_, __) => const PatientProfileScreen(),
+              routes: [
+                GoRoute(
+                    path: 'edit',
+                    builder: (_, __) => const PatientEditProfileScreen()),
+                GoRoute(
+                    path: 'records',
+                    builder: (_, __) => const PatientRecordsScreen()),
+                // Notifications moved out of the tab bar into a Profile row.
+                GoRoute(
+                    path: 'notifications',
+                    builder: (_, __) => const NotificationsScreen()),
+              ],
+            ),
           ]),
         ],
       ),

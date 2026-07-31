@@ -262,5 +262,38 @@
   "actionReschedule": "Reschedule",
   "rescheduleConfirmTitle": "Confirm reschedule",
   "rescheduleConfirm": "Move to this slot",
-  "appointmentRescheduled": "Appointment rescheduled"
+  "appointmentRescheduled": "Appointment rescheduled",
+  "tabHome": "Home",
+  "tabFind": "Find",
+  "tabBookings": "My Bookings",
+  "tagTopRated": "Top rated",
+  "actionSeeAll": "See all",
+  "actionViewAll": "View all",
+  "detailsAction": "Details",
+  "logoutConfirm": "Are you sure you want to log out?",
+  "homeGreeting": "Hello, {name}",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "homeGreetingGeneric": "Hello",
+  "homeSubtitle": "Find your specialist and book with ease.",
+  "homeUpcomingTitle": "Upcoming appointment",
+  "homeNoUpcoming": "You have no upcoming appointments.",
+  "homeCategoriesTitle": "Categories",
+  "homeTopDoctorsTitle": "Top doctors",
+  "availableDoctors": "Available doctors",
+  "statRating": "Rating",
+  "statReviews": "Reviews",
+  "aboutDoctor": "About the doctor",
+  "selectDate": "Select date",
+  "availableSlots": "Available slots",
+  "profileEditProfile": "Edit profile",
+  "profileEditProfileSubtitle": "Personal details & contact info",
+  "profileMyAppointments": "My appointments",
+  "profileAccountSettings": "Account settings",
+  "profileMedicalHistory": "Medical history",
+  "profileMedicalHistorySubtitle": "Past prescriptions & diagnoses",
+  "profileNotificationsSubtitle": "Alerts for upcoming visits"
 }

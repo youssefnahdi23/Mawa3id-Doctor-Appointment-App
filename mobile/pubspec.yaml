@@ -45,6 +45,13 @@ flutter:
   assets:
     - assets/images/
 
+  fonts:
+    # Manrope (OFL) — the "Clinical Vitality" type family across all roles.
+    # Variable font; Flutter interpolates the nearest weight from fontWeight.
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope.ttf
+
 # Placeholder brand mark (medical green + "M"); swap assets/icon/* when the real
 # logo lands, then rerun: dart run flutter_launcher_icons && dart run flutter_native_splash:create
 flutter_launcher_icons:

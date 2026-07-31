@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mawa3id/features/patient/data/patient_models.dart';
 import 'package:mawa3id/features/patient/data/patient_repository.dart';
 import 'package:mawa3id/features/patient/state/patient_providers.dart';
-import 'package:mawa3id/features/patient/ui/patient_profile_screen.dart';
+import 'package:mawa3id/features/patient/ui/patient_edit_profile_screen.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,7 +29,7 @@ void main() {
       ];
 
   testWidgets('shows read-only identity and seeds the name', (tester) async {
-    await tester.pumpWidget(wrapWithApp(const PatientProfileScreen(),
+    await tester.pumpWidget(wrapWithApp(const PatientEditProfileScreen(),
         overrides: overridesWith(_MockPatientRepository())));
     await tester.pumpAndSettle();
 
@@ -46,7 +46,7 @@ void main() {
           phone: any(named: 'phone'),
         )).thenAnswer((_) async => _patient);
 
-    await tester.pumpWidget(wrapWithApp(const PatientProfileScreen(),
+    await tester.pumpWidget(wrapWithApp(const PatientEditProfileScreen(),
         overrides: overridesWith(repo)));
     await tester.pumpAndSettle();
 
