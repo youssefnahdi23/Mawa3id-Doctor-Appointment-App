@@ -2,7 +2,10 @@ package com.mawa3id.doctor.dto;
 
 import com.mawa3id.doctor.AcceptanceMode;
 import com.mawa3id.doctor.Doctor;
+import com.mawa3id.doctor.Governorate;
 import com.mawa3id.specialty.dto.SpecialtyResponse;
+
+import java.util.List;
 
 public record DoctorResponse(
         Long userId,
@@ -16,7 +19,11 @@ public record DoctorResponse(
         AcceptanceMode acceptanceMode,
         int slotDurationMinutes,
         double ratingAverage,
-        int ratingCount
+        int ratingCount,
+        boolean cnamConventionne,
+        Governorate governorate,
+        Integer consultationFee,
+        List<String> languages
 ) {
     public static DoctorResponse from(Doctor doctor) {
         return new DoctorResponse(
@@ -31,6 +38,10 @@ public record DoctorResponse(
                 doctor.getAcceptanceMode(),
                 doctor.getSlotDurationMinutes(),
                 doctor.getRatingAverage(),
-                doctor.getRatingCount());
+                doctor.getRatingCount(),
+                doctor.isCnamConventionne(),
+                doctor.getGovernorate(),
+                doctor.getConsultationFee(),
+                doctor.getLanguageList());
     }
 }

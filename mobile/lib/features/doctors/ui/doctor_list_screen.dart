@@ -10,6 +10,7 @@ import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_skeleton.dart';
 import '../../../core/widgets/rating_stars.dart';
 import '../../../core/widgets/session_actions.dart';
+import '../data/doctor_reference.dart';
 import '../state/doctors_providers.dart';
 
 class DoctorListScreen extends ConsumerStatefulWidget {
@@ -53,9 +54,14 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final languageCode = Localizations.localeOf(context).languageCode;
     final listState = ref.watch(doctorListControllerProvider);
     final controller = ref.read(doctorListControllerProvider.notifier);
     final specialties = ref.watch(specialtiesProvider);
+    // id -> specialty, so list rows can render the label in the active language.
+    final specialtyById = {
+      for (final s in specialties.valueOrNull ?? []) s.id: s,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -93,12 +99,41 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                   Padding(
                     padding: const EdgeInsetsDirectional.only(start: 8),
                     child: FilterChip(
-                      label: Text(specialty.name),
+                      label: Text(specialty.localizedName(languageCode)),
                       selected: controller.specialtyId == specialty.id,
                       onSelected: (selected) => controller
                           .setSpecialty(selected ? specialty.id : null),
                     ),
                   ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                FilterChip(
+                  label: Text(l10n.cnamBadge),
+                  selected: controller.cnamOnly,
+                  onSelected: controller.setCnamOnly,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButton<String?>(
+                    isExpanded: true,
+                    value: controller.governorate,
+                    hint: Text(l10n.allGovernorates),
+                    items: [
+                      DropdownMenuItem(
+                          value: null, child: Text(l10n.allGovernorates)),
+                      for (final code in kGovernorates)
+                        DropdownMenuItem(
+                            value: code,
+                            child: Text(governorateLabel(l10n, code))),
+                    ],
+                    onChanged: controller.setGovernorate,
+                  ),
+                ),
               ],
             ),
           ),
@@ -131,6 +166,11 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                         );
                       }
                       final doctor = data.items[index];
+                      final specialtyLabel = doctor.specialtyId != null
+                          ? specialtyById[doctor.specialtyId]
+                                  ?.localizedName(languageCode) ??
+                              doctor.specialtyName
+                          : doctor.specialtyName;
                       return ListTile(
                         leading: CircleAvatar(
                             child: Text(doctor.name.isEmpty
@@ -140,15 +180,19 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (doctor.specialtyName != null)
-                              Text(doctor.specialtyName!),
+                            if (specialtyLabel != null) Text(specialtyLabel),
                             RatingStars(
                               average: doctor.ratingAverage,
                               count: doctor.ratingCount,
                             ),
+                            _DoctorMetaRow(
+                              cnam: doctor.cnamConventionne,
+                              governorate: doctor.governorate,
+                              consultationFee: doctor.consultationFee,
+                            ),
                           ],
                         ),
-                        isThreeLine: doctor.specialtyName != null,
+                        isThreeLine: true,
                         onTap: () =>
                             context.go('/p/doctors/${doctor.userId}'),
                       );
@@ -160,6 +204,49 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Compact CNAM / governorate / fee strip shown under a doctor in the list.
+class _DoctorMetaRow extends StatelessWidget {
+  const _DoctorMetaRow({
+    required this.cnam,
+    required this.governorate,
+    required this.consultationFee,
+  });
+
+  final bool cnam;
+  final String? governorate;
+  final int? consultationFee;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final govLabel = governorateLabel(l10n, governorate);
+    final items = <Widget>[
+      if (cnam)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(l10n.cnamBadge,
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: theme.colorScheme.onPrimaryContainer)),
+        ),
+      if (govLabel.isNotEmpty)
+        Text('📍 $govLabel', style: theme.textTheme.bodySmall),
+      if (consultationFee != null)
+        Text('$consultationFee ${l10n.consultationFeeUnit}',
+            style: theme.textTheme.bodySmall),
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(spacing: 8, runSpacing: 4, children: items),
     );
   }
 }

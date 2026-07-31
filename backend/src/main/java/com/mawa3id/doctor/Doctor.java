@@ -53,6 +53,22 @@ public class Doctor {
     @Column(name = "slot_duration_minutes", nullable = false)
     private int slotDurationMinutes = 30;
 
+    /** Whether this doctor is conventionné with Tunisia's CNAM health insurance. */
+    @Column(name = "cnam_conventionne", nullable = false)
+    private boolean cnamConventionne = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "governorate", length = 40)
+    private Governorate governorate;
+
+    /** Display-only consultation fee in whole Tunisian dinars; never collected in-app. */
+    @Column(name = "consultation_fee")
+    private Integer consultationFee;
+
+    /** Comma-joined {@link SpokenLanguage} names, e.g. {@code "AR,FR"}. */
+    @Column(name = "languages", length = 60)
+    private String languages;
+
     /** Denormalised aggregate over this doctor's reviews; recomputed on each review write. */
     @Column(name = "rating_count", nullable = false)
     private int ratingCount = 0;
@@ -159,5 +175,48 @@ public class Doctor {
 
     public void setRatingAverage(double ratingAverage) {
         this.ratingAverage = ratingAverage;
+    }
+
+    public boolean isCnamConventionne() {
+        return cnamConventionne;
+    }
+
+    public void setCnamConventionne(boolean cnamConventionne) {
+        this.cnamConventionne = cnamConventionne;
+    }
+
+    public Governorate getGovernorate() {
+        return governorate;
+    }
+
+    public void setGovernorate(Governorate governorate) {
+        this.governorate = governorate;
+    }
+
+    public Integer getConsultationFee() {
+        return consultationFee;
+    }
+
+    public void setConsultationFee(Integer consultationFee) {
+        this.consultationFee = consultationFee;
+    }
+
+    public String getLanguages() {
+        return languages;
+    }
+
+    public void setLanguages(String languages) {
+        this.languages = languages;
+    }
+
+    /** Languages as a list, or an empty list when none are set. */
+    public java.util.List<String> getLanguageList() {
+        if (languages == null || languages.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.Arrays.stream(languages.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 }

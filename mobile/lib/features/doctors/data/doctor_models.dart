@@ -21,6 +21,8 @@ class SpecialtyResponse {
   const SpecialtyResponse({
     required this.id,
     required this.name,
+    this.nameAr,
+    this.nameFr,
     this.description,
   });
 
@@ -29,7 +31,22 @@ class SpecialtyResponse {
 
   final int id;
   final String name;
+  final String? nameAr;
+  final String? nameFr;
   final String? description;
+
+  /// The specialty label in the given app language, falling back to the
+  /// English [name] when a translation is missing.
+  String localizedName(String languageCode) {
+    switch (languageCode) {
+      case 'ar':
+        return (nameAr?.isNotEmpty ?? false) ? nameAr! : name;
+      case 'fr':
+        return (nameFr?.isNotEmpty ?? false) ? nameFr! : name;
+      default:
+        return name;
+    }
+  }
 }
 
 /// Lightweight projection used by the doctor list/search endpoint.
@@ -38,10 +55,14 @@ class DoctorSummary {
   const DoctorSummary({
     required this.userId,
     required this.name,
+    this.specialtyId,
     this.specialtyName,
     this.cabinetAddress,
     required this.ratingAverage,
     required this.ratingCount,
+    this.cnamConventionne = false,
+    this.governorate,
+    this.consultationFee,
   });
 
   factory DoctorSummary.fromJson(Map<String, dynamic> json) =>
@@ -49,10 +70,18 @@ class DoctorSummary {
 
   final int userId;
   final String name;
+  final int? specialtyId;
   final String? specialtyName;
   final String? cabinetAddress;
   final double ratingAverage;
   final int ratingCount;
+  final bool cnamConventionne;
+
+  /// Governorate enum name (e.g. `SFAX`), or null.
+  final String? governorate;
+
+  /// Display-only consultation fee in whole Tunisian dinars, or null.
+  final int? consultationFee;
 }
 
 @JsonSerializable(createToJson: false)
@@ -70,6 +99,10 @@ class DoctorResponse {
     required this.slotDurationMinutes,
     required this.ratingAverage,
     required this.ratingCount,
+    this.cnamConventionne = false,
+    this.governorate,
+    this.consultationFee,
+    this.languages = const [],
   });
 
   factory DoctorResponse.fromJson(Map<String, dynamic> json) =>
@@ -87,6 +120,16 @@ class DoctorResponse {
   final int slotDurationMinutes;
   final double ratingAverage;
   final int ratingCount;
+  final bool cnamConventionne;
+
+  /// Governorate enum name (e.g. `SFAX`), or null.
+  final String? governorate;
+
+  /// Display-only consultation fee in whole Tunisian dinars, or null.
+  final int? consultationFee;
+
+  /// Spoken-language codes drawn from {AR, FR, EN}.
+  final List<String> languages;
 }
 
 @JsonSerializable(createToJson: false)

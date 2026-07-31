@@ -89,6 +89,60 @@ class DoctorIntegrationTest {
     }
 
     @Test
+    void doctorCanUpdateAndFilterByCnamAndGovernorate() throws Exception {
+        String token = registerDoctor("cnam@example.com", "Dr Sfax", cardiologyId);
+        registerDoctor("other@example.com", "Dr Tunis", dermatologyId);
+
+        String update = """
+                {"name":"Dr Sfax","specialtyId":%d,"cnamConventionne":true,
+                 "governorate":"SFAX","consultationFee":40,"languages":["ar","fr"]}
+                """.formatted(cardiologyId);
+
+        mockMvc.perform(put("/api/doctors/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cnamConventionne").value(true))
+                .andExpect(jsonPath("$.governorate").value("SFAX"))
+                .andExpect(jsonPath("$.consultationFee").value(40))
+                .andExpect(jsonPath("$.languages[0]").value("AR"))
+                .andExpect(jsonPath("$.languages[1]").value("FR"));
+
+        // Filter by CNAM returns only the conventionné doctor.
+        mockMvc.perform(get("/api/doctors").param("cnam", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Dr Sfax"))
+                .andExpect(jsonPath("$.content[0].governorate").value("SFAX"))
+                .andExpect(jsonPath("$.content[0].consultationFee").value(40))
+                .andExpect(jsonPath("$.content[0].specialtyId").value(cardiologyId));
+
+        // Filter by governorate returns only the SFAX doctor.
+        mockMvc.perform(get("/api/doctors").param("governorate", "SFAX"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Dr Sfax"));
+    }
+
+    @Test
+    void updateWithUnsupportedLanguageIsBadRequest() throws Exception {
+        String token = registerDoctor("badlang@example.com", "Dr Lang", cardiologyId);
+        String update = """
+                {"name":"Dr Lang","languages":["es"]}
+                """;
+        mockMvc.perform(put("/api/doctors/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void unknownGovernorateFilterIsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/doctors").param("governorate", "ATLANTIS"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void patientCannotUpdateDoctorProfile() throws Exception {
         String patientToken = registerPatient("patient2@example.com");
         mockMvc.perform(put("/api/doctors/me")

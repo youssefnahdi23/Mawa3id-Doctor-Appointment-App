@@ -27,6 +27,8 @@ class DoctorRepository {
   Future<PageResponse<DoctorSummary>> list({
     int? specialtyId,
     String? query,
+    bool? cnam,
+    String? governorate,
     int page = 0,
     int size = 20,
   }) {
@@ -36,6 +38,8 @@ class DoctorRepository {
         queryParameters: {
           if (specialtyId != null) 'specialtyId': specialtyId,
           if (query != null && query.isNotEmpty) 'q': query,
+          if (cnam != null) 'cnam': cnam,
+          if (governorate != null) 'governorate': governorate,
           'page': page,
           'size': size,
         },
@@ -72,6 +76,10 @@ class DoctorRepository {
     String? bio,
     AcceptanceMode? acceptanceMode,
     int? slotDurationMinutes,
+    bool? cnamConventionne,
+    String? governorate,
+    int? consultationFee,
+    List<String>? languages,
   }) {
     return apiCall(() async {
       final response = await _dio.put<Map<String, dynamic>>(
@@ -87,6 +95,12 @@ class DoctorRepository {
             'acceptanceMode': acceptanceMode.wireName,
           if (slotDurationMinutes != null)
             'slotDurationMinutes': slotDurationMinutes,
+          if (cnamConventionne != null) 'cnamConventionne': cnamConventionne,
+          // governorate/consultationFee are absolute on the backend: omitting a
+          // null clears it, which is what "unset in the form" means here.
+          if (governorate != null) 'governorate': governorate,
+          if (consultationFee != null) 'consultationFee': consultationFee,
+          if (languages != null) 'languages': languages,
         },
       );
       return DoctorResponse.fromJson(response.data!);

@@ -54,9 +54,13 @@ final doctorListControllerProvider =
 class DoctorListController extends AsyncNotifier<DoctorListData> {
   String _query = '';
   int? _specialtyId;
+  bool? _cnam;
+  String? _governorate;
 
   String get query => _query;
   int? get specialtyId => _specialtyId;
+  bool get cnamOnly => _cnam ?? false;
+  String? get governorate => _governorate;
 
   @override
   Future<DoctorListData> build() => _fetchFirstPage();
@@ -65,6 +69,8 @@ class DoctorListController extends AsyncNotifier<DoctorListData> {
     final page = await ref.read(doctorRepositoryProvider).list(
           specialtyId: _specialtyId,
           query: _query,
+          cnam: _cnam,
+          governorate: _governorate,
         );
     return DoctorListData(
       items: page.content,
@@ -83,6 +89,18 @@ class DoctorListController extends AsyncNotifier<DoctorListData> {
     return _reload();
   }
 
+  /// Toggles the "CNAM only" filter. Sends `cnam=true` when on, and no filter
+  /// (both conventionné and non) when off.
+  Future<void> setCnamOnly(bool value) {
+    _cnam = value ? true : null;
+    return _reload();
+  }
+
+  Future<void> setGovernorate(String? governorate) {
+    _governorate = governorate;
+    return _reload();
+  }
+
   Future<void> _reload() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(_fetchFirstPage);
@@ -96,6 +114,8 @@ class DoctorListController extends AsyncNotifier<DoctorListData> {
       final page = await ref.read(doctorRepositoryProvider).list(
             specialtyId: _specialtyId,
             query: _query,
+            cnam: _cnam,
+            governorate: _governorate,
             page: current.nextPage,
           );
       state = AsyncData(DoctorListData(

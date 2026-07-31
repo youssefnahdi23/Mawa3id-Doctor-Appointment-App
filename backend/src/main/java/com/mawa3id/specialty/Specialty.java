@@ -18,6 +18,12 @@ public class Specialty {
     @Column(nullable = false, unique = true, length = 120)
     private String name;
 
+    @Column(name = "name_ar", length = 120)
+    private String nameAr;
+
+    @Column(name = "name_fr", length = 120)
+    private String nameFr;
+
     @Column(length = 500)
     private String description;
 
@@ -29,12 +35,27 @@ public class Specialty {
         this.description = description;
     }
 
+    public Specialty(String name, String nameAr, String nameFr, String description) {
+        this.name = name;
+        this.nameAr = nameAr;
+        this.nameFr = nameFr;
+        this.description = description;
+    }
+
     public Long getId() {
         return id;
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getNameAr() {
+        return nameAr;
+    }
+
+    public String getNameFr() {
+        return nameFr;
     }
 
     public String getDescription() {
