@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,9 +44,17 @@ class NotificationServiceTest {
     @Mock private NotificationRepository notificationRepository;
     @Mock private AppointmentRepository appointmentRepository;
     @Mock private NotificationProperties properties;
+    @Mock private NotificationMessages messages;
     @Mock private ApplicationEventPublisher events;
 
     @InjectMocks private NotificationService notificationService;
+
+    /** Stub the localized renderer with fixed strings; call only in tests that record. */
+    private void stubMessages() {
+        when(messages.localeFor(any())).thenReturn(Locale.ENGLISH);
+        when(messages.body(any(), any(), any())).thenReturn("body");
+        when(messages.title(any(), any())).thenReturn("title");
+    }
 
     private static final long USER_ID = 7L;
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 1, 1, 9, 0);
@@ -80,12 +89,14 @@ class NotificationServiceTest {
     @Test
     void recordPersistsNotification() {
         User recipient = mockUser(USER_ID);
+        stubMessages();
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Notification saved = notificationService.record(
-                recipient, NotificationType.APPOINTMENT_BOOKED, "New booking", null);
+        Notification saved = notificationService.record(recipient, NotificationType.APPOINTMENT_BOOKED,
+                "notification.booked.request.body", new Object[]{"Sami"}, null);
 
         assertThat(saved.getType()).isEqualTo(NotificationType.APPOINTMENT_BOOKED);
+        assertThat(saved.getMessage()).isEqualTo("body");
         verify(notificationRepository).save(any(Notification.class));
         verify(events).publishEvent(any(NotificationCreatedEvent.class));
     }
@@ -168,6 +179,7 @@ class NotificationServiceTest {
     @Test
     void dispatchDueRemindersNotifiesBothPartiesAndIsIdempotent() {
         when(properties.getReminder()).thenReturn(reminder);
+        stubMessages();
         Appointment appt = dueAppointment(100L);
         when(appointmentRepository.findByStatusAndStartTimeBetween(
                 eq(AppointmentStatus.ACCEPTED), eq(NOW), eq(NOW.plusHours(24))))

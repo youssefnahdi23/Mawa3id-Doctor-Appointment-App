@@ -49,6 +49,10 @@ public class User {
     @Column(name = "password_changed_at")
     private Instant passwordChangedAt;
 
+    /** Preferred language tag (en/fr/ar) for notifications; null falls back to the server default. */
+    @Column(name = "preferred_language", length = 5)
+    private String preferredLanguage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -152,6 +156,14 @@ public class User {
 
     public void setPasswordChangedAt(Instant passwordChangedAt) {
         this.passwordChangedAt = passwordChangedAt;
+    }
+
+    public String getPreferredLanguage() {
+        return preferredLanguage;
+    }
+
+    public void setPreferredLanguage(String preferredLanguage) {
+        this.preferredLanguage = preferredLanguage;
     }
 
     public Instant getCreatedAt() {

@@ -34,7 +34,7 @@ class PushDispatcherTest {
     }
 
     private NotificationCreatedEvent event(NotificationType type, Long appointmentId) {
-        return new NotificationCreatedEvent(RECIPIENT, type, "You have an update", appointmentId);
+        return new NotificationCreatedEvent(RECIPIENT, type, "Localized title", "You have an update", appointmentId);
     }
 
     @Test
@@ -47,7 +47,8 @@ class PushDispatcherTest {
         StubPushSender.Sent sent = pushSender.sent().get(0);
         assertThat(sent.tokens()).containsExactly("t1", "t2");
         PushMessage message = sent.message();
-        assertThat(message.title()).isEqualTo("Appointment confirmed");
+        // Title/body come straight from the (already-localized) event.
+        assertThat(message.title()).isEqualTo("Localized title");
         assertThat(message.body()).isEqualTo("You have an update");
         assertThat(message.data())
                 .containsEntry("type", "APPOINTMENT_ACCEPTED")

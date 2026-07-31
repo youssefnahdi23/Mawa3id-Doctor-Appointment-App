@@ -39,7 +39,8 @@ public class PushDispatcher {
             if (tokens.isEmpty()) {
                 return;
             }
-            PushMessage message = new PushMessage(titleFor(event.type()), event.message(), dataFor(event));
+            // Title/body are already localized to the recipient by NotificationService.
+            PushMessage message = new PushMessage(event.title(), event.body(), dataFor(event));
             List<String> unregistered = pushSender.send(tokens, message);
             for (String token : unregistered) {
                 deviceTokenService.unregister(token);
@@ -57,16 +58,5 @@ public class PushDispatcher {
             data.put("appointmentId", String.valueOf(event.appointmentId()));
         }
         return data;
-    }
-
-    private static String titleFor(NotificationType type) {
-        return switch (type) {
-            case APPOINTMENT_BOOKED -> "New appointment request";
-            case APPOINTMENT_ACCEPTED -> "Appointment confirmed";
-            case APPOINTMENT_REJECTED -> "Appointment declined";
-            case APPOINTMENT_CANCELLED -> "Appointment cancelled";
-            case APPOINTMENT_COMPLETED -> "Appointment completed";
-            case APPOINTMENT_REMINDER -> "Appointment reminder";
-        };
     }
 }
