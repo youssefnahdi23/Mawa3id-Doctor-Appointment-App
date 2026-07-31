@@ -15,6 +15,20 @@ enum AppointmentStatus {
   cancelled,
   @JsonValue('COMPLETED')
   completed,
+  @JsonValue('NO_SHOW')
+  noShow,
+}
+
+extension AppointmentStatusWire on AppointmentStatus {
+  /// Backend enum name (e.g. `NO_SHOW`), used for query params.
+  String get wireName => switch (this) {
+        AppointmentStatus.pending => 'PENDING',
+        AppointmentStatus.accepted => 'ACCEPTED',
+        AppointmentStatus.rejected => 'REJECTED',
+        AppointmentStatus.cancelled => 'CANCELLED',
+        AppointmentStatus.completed => 'COMPLETED',
+        AppointmentStatus.noShow => 'NO_SHOW',
+      };
 }
 
 @JsonSerializable(createToJson: false)

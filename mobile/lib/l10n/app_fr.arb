@@ -256,5 +256,11 @@
   "feedbackCategoryPraise": "Compliment",
   "feedbackCategoryOther": "Autre",
   "feedbackMessage": "Votre message",
-  "feedbackSubmit": "Envoyer"
+  "feedbackSubmit": "Envoyer",
+  "statusNoShow": "Absent",
+  "actionNoShow": "Absent",
+  "actionReschedule": "Reporter",
+  "rescheduleConfirmTitle": "Confirmer le report",
+  "rescheduleConfirm": "Déplacer vers ce créneau",
+  "appointmentRescheduled": "Rendez-vous reporté"
 }

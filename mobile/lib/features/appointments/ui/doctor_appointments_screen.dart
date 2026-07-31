@@ -121,6 +121,11 @@ class DoctorAppointmentsScreen extends ConsumerWidget {
                                         (repo) => action(repo, item.id)),
                                 onRecord: () => context
                                     .go('/d/appointments/${item.id}/record'),
+                                onReschedule: () => context
+                                    .push('/d/appointments/${item.id}'
+                                        '/reschedule?doctorId=${item.doctorId}')
+                                    .then((_) => ref.invalidate(
+                                        doctorAppointmentsProvider)),
                               ),
                             ],
                           ),
@@ -149,11 +154,13 @@ class _ActionRow extends StatelessWidget {
     required this.status,
     required this.onAction,
     required this.onRecord,
+    required this.onReschedule,
   });
 
   final AppointmentStatus status;
   final void Function(_RepoAction) onAction;
   final VoidCallback onRecord;
+  final VoidCallback onReschedule;
 
   @override
   Widget build(BuildContext context) {
@@ -167,9 +174,16 @@ class _ActionRow extends StatelessWidget {
         children.add(TextButton(
             onPressed: () => onAction((repo, id) => repo.reject(id)),
             child: Text(l10n.actionReject)));
+        children.add(TextButton(
+            onPressed: onReschedule, child: Text(l10n.actionReschedule)));
       case AppointmentStatus.accepted:
         children.add(FilledButton.tonal(
             onPressed: onRecord, child: Text(l10n.recordCompleteWithNotes)));
+        children.add(TextButton(
+            onPressed: () => onAction((repo, id) => repo.noShow(id)),
+            child: Text(l10n.actionNoShow)));
+        children.add(TextButton(
+            onPressed: onReschedule, child: Text(l10n.actionReschedule)));
         children.add(TextButton(
             onPressed: () => onAction((repo, id) => repo.cancel(id)),
             child: Text(l10n.actionCancel)));
@@ -178,6 +192,7 @@ class _ActionRow extends StatelessWidget {
             onPressed: onRecord, child: Text(l10n.recordViewEdit)));
       case AppointmentStatus.rejected:
       case AppointmentStatus.cancelled:
+      case AppointmentStatus.noShow:
         break;
     }
     if (children.isEmpty) return const SizedBox.shrink();

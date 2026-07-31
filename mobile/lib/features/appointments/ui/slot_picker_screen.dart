@@ -12,9 +12,16 @@ import '../data/appointment_repository.dart';
 import '../state/appointments_providers.dart';
 
 class SlotPickerScreen extends ConsumerStatefulWidget {
-  const SlotPickerScreen({super.key, required this.doctorId});
+  const SlotPickerScreen({
+    super.key,
+    required this.doctorId,
+    this.rescheduleAppointmentId,
+  });
 
   final int doctorId;
+
+  /// When set, picking a slot moves this appointment instead of booking a new one.
+  final int? rescheduleAppointmentId;
 
   @override
   ConsumerState<SlotPickerScreen> createState() => _SlotPickerScreenState();
@@ -24,18 +31,27 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
   DateTime? _selectedDay;
 
   Future<void> _pickSlot(SlotResponse slot) async {
-    final booked = await showModalBottomSheet<AppointmentResponse>(
+    final result = await showModalBottomSheet<AppointmentResponse>(
       context: context,
       isScrollControlled: true,
-      builder: (_) =>
-          _BookingConfirmSheet(doctorId: widget.doctorId, slot: slot),
+      builder: (_) => _BookingConfirmSheet(
+        doctorId: widget.doctorId,
+        slot: slot,
+        rescheduleAppointmentId: widget.rescheduleAppointmentId,
+      ),
     );
-    if (booked == null || !mounted) return;
-    // A conflicting booking (409) already refreshed the slots inside the
-    // sheet; success lands here.
+    if (result == null || !mounted) return;
+    // A conflict (409) already refreshed the slots inside the sheet; success
+    // lands here.
     final l10n = context.l10n;
+    if (widget.rescheduleAppointmentId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.appointmentRescheduled)));
+      context.pop();
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(booked.status == AppointmentStatus.accepted
+      content: Text(result.status == AppointmentStatus.accepted
           ? l10n.bookingConfirmed
           : l10n.bookingPending),
     ));
@@ -121,10 +137,17 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
 }
 
 class _BookingConfirmSheet extends ConsumerStatefulWidget {
-  const _BookingConfirmSheet({required this.doctorId, required this.slot});
+  const _BookingConfirmSheet({
+    required this.doctorId,
+    required this.slot,
+    this.rescheduleAppointmentId,
+  });
 
   final int doctorId;
   final SlotResponse slot;
+  final int? rescheduleAppointmentId;
+
+  bool get isReschedule => rescheduleAppointmentId != null;
 
   @override
   ConsumerState<_BookingConfirmSheet> createState() =>
@@ -148,12 +171,16 @@ class _BookingConfirmSheetState extends ConsumerState<_BookingConfirmSheet> {
       _error = null;
     });
     try {
-      final booked = await ref.read(appointmentRepositoryProvider).book(
-            doctorId: widget.doctorId,
-            startTime: widget.slot.start,
-            reason: _reason.text.trim(),
-          );
-      if (mounted) Navigator.of(context).pop(booked);
+      final repo = ref.read(appointmentRepositoryProvider);
+      final result = widget.isReschedule
+          ? await repo.reschedule(
+              widget.rescheduleAppointmentId!, widget.slot.start)
+          : await repo.book(
+              doctorId: widget.doctorId,
+              startTime: widget.slot.start,
+              reason: _reason.text.trim(),
+            );
+      if (mounted) Navigator.of(context).pop(result);
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.kind == ApiErrorKind.conflict) {
@@ -185,20 +212,24 @@ class _BookingConfirmSheetState extends ConsumerState<_BookingConfirmSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.confirmBookingTitle,
+            Text(
+                widget.isReschedule
+                    ? l10n.rescheduleConfirmTitle
+                    : l10n.confirmBookingTitle,
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(when, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 16),
-            TextField(
-              controller: _reason,
-              decoration: InputDecoration(
-                labelText: l10n.reasonOptional,
-                border: const OutlineInputBorder(),
+            if (!widget.isReschedule)
+              TextField(
+                controller: _reason,
+                decoration: InputDecoration(
+                  labelText: l10n.reasonOptional,
+                  border: const OutlineInputBorder(),
+                ),
+                maxLength: 500,
+                maxLines: 2,
               ),
-              maxLength: 500,
-              maxLines: 2,
-            ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -215,7 +246,9 @@ class _BookingConfirmSheetState extends ConsumerState<_BookingConfirmSheet> {
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(l10n.confirmBooking),
+                  : Text(widget.isReschedule
+                      ? l10n.rescheduleConfirm
+                      : l10n.confirmBooking),
             ),
           ],
         ),

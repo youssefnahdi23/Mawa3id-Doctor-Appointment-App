@@ -128,7 +128,8 @@ void main() {
       expect(find.text('Complete'), findsNothing);
     });
 
-    testWidgets('ACCEPTED shows complete-with-notes/cancel', (tester) async {
+    testWidgets('ACCEPTED shows complete/no-show/reschedule/cancel',
+        (tester) async {
       stubQueue([_appointment(AppointmentStatus.accepted)]);
 
       await tester.pumpWidget(
@@ -138,8 +139,29 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Complete with notes'), findsOneWidget);
+      expect(find.text('No-show'), findsOneWidget);
+      expect(find.text('Reschedule'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Accept'), findsNothing);
+    });
+
+    testWidgets('tapping No-show calls the repository', (tester) async {
+      stubQueue([_appointment(AppointmentStatus.accepted)]);
+      when(() => repository.noShow(11))
+          .thenAnswer((_) async => _appointment(AppointmentStatus.noShow));
+
+      await tester.pumpWidget(
+          wrapWithApp(const DoctorAppointmentsScreen(), overrides: [
+        appointmentRepositoryProvider.overrideWithValue(repository),
+      ]));
+      await tester.pumpAndSettle();
+
+      stubQueue([_appointment(AppointmentStatus.noShow)]);
+      await tester.tap(find.text('No-show'));
+      await tester.pumpAndSettle();
+
+      verify(() => repository.noShow(11)).called(1);
+      expect(find.text('No-show'), findsOneWidget); // now the status chip
     });
 
     testWidgets('COMPLETED shows view/edit record', (tester) async {

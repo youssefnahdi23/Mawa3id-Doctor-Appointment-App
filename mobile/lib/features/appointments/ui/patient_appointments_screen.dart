@@ -142,11 +142,24 @@ class PatientAppointmentsScreen extends ConsumerWidget {
                               if (cancellable)
                                 Align(
                                   alignment: AlignmentDirectional.centerEnd,
-                                  child: TextButton(
-                                    onPressed: () =>
-                                        _cancel(context, ref, item),
-                                    child: Text(
-                                        l10n.cancelAppointmentAction),
+                                  child: Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      TextButton(
+                                        onPressed: () => context
+                                            .push('/p/appointments/${item.id}'
+                                                '/reschedule?doctorId=${item.doctorId}')
+                                            .then((_) => ref.invalidate(
+                                                patientAppointmentsProvider)),
+                                        child: Text(l10n.actionReschedule),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            _cancel(context, ref, item),
+                                        child: Text(
+                                            l10n.cancelAppointmentAction),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               if (completed)

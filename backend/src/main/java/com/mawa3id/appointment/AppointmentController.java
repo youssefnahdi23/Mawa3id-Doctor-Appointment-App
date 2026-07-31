@@ -2,6 +2,7 @@ package com.mawa3id.appointment;
 
 import com.mawa3id.appointment.dto.AppointmentResponse;
 import com.mawa3id.appointment.dto.BookAppointmentRequest;
+import com.mawa3id.appointment.dto.RescheduleRequest;
 import com.mawa3id.security.AppUserDetails;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -89,5 +90,19 @@ public class AppointmentController {
     public AppointmentResponse cancel(@AuthenticationPrincipal AppUserDetails principal,
                                       @PathVariable Long id) {
         return appointmentService.cancel(principal.getUserId(), id);
+    }
+
+    @PutMapping("/{id}/no-show")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public AppointmentResponse noShow(@AuthenticationPrincipal AppUserDetails principal,
+                                      @PathVariable Long id) {
+        return appointmentService.markNoShow(principal.getUserId(), id);
+    }
+
+    @PutMapping("/{id}/reschedule")
+    public AppointmentResponse reschedule(@AuthenticationPrincipal AppUserDetails principal,
+                                          @PathVariable Long id,
+                                          @Valid @RequestBody RescheduleRequest request) {
+        return appointmentService.reschedule(principal.getUserId(), id, request.startTime());
     }
 }
