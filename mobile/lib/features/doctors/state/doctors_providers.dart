@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/page_response.dart';
+import '../../availability/data/availability_models.dart';
+import '../../availability/data/availability_repository.dart';
 import '../data/doctor_models.dart';
 import '../data/doctor_repository.dart';
 
@@ -13,6 +15,12 @@ final myDoctorProfileProvider = FutureProvider.autoDispose<DoctorResponse>(
 
 final doctorDetailProvider = FutureProvider.family<DoctorResponse, int>(
     (ref, doctorId) => ref.watch(doctorRepositoryProvider).byId(doctorId));
+
+/// A doctor's public weekly availability rules (incl. the RDV-only flag), used
+/// to show patients the "Consultation hours" on the doctor detail screen.
+final doctorAvailabilityProvider =
+    FutureProvider.family<List<AvailabilityRule>, int>((ref, doctorId) =>
+        ref.watch(availabilityRepositoryProvider).forDoctor(doctorId));
 
 final doctorReviewsProvider =
     FutureProvider.family<PageResponse<ReviewResponse>, int>((ref, doctorId) =>

@@ -7,6 +7,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/error_view.dart';
+import '../../availability/data/availability_models.dart';
 import '../data/doctor_models.dart';
 import '../data/doctor_reference.dart';
 import '../state/doctors_providers.dart';
@@ -190,6 +191,8 @@ class _DoctorDetailBody extends ConsumerWidget {
         _InfoSection(doctor: doctor),
 
         const SizedBox(height: AppSpacing.xl),
+        _ConsultationHours(doctorId: doctor.userId),
+
         Text(l10n.reviewsTitle,
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w700)),
@@ -330,3 +333,87 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+/// Weekly consultation hours with a per-window walk-in vs "By appointment only"
+/// (RDVs Only) badge, so patients know which days they can just show up.
+class _ConsultationHours extends ConsumerWidget {
+  const _ConsultationHours({required this.doctorId});
+
+  final int doctorId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final rules = ref.watch(doctorAvailabilityProvider(doctorId));
+    return rules.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (list) {
+        if (list.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.consultationHours,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                borderRadius: AppRadii.cardR,
+              ),
+              child: Column(
+                children: [
+                  for (final rule in list)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 96,
+                            child: Text(_weekdayName(context, rule.dayOfWeek),
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                          Expanded(
+                            child: Text(
+                                '${_hhmm(rule.startTime)}–${_hhmm(rule.endTime)}',
+                                style: theme.textTheme.bodyMedium),
+                          ),
+                          TagBadge(
+                            label: rule.rdvOnly
+                                ? l10n.rdvOnlyLabel
+                                : l10n.walkInWelcome,
+                            tone: rule.rdvOnly
+                                ? BadgeTone.primary
+                                : BadgeTone.neutral,
+                            icon: rule.rdvOnly
+                                ? Icons.event_available
+                                : Icons.directions_walk,
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Localized weekday name for the availability `Weekday` enum (Monday-first).
+String _weekdayName(BuildContext context, Weekday day) {
+  final locale = Localizations.localeOf(context).toString();
+  // 2024-01-01 is a Monday; offset by the enum's Monday-first index.
+  return DateFormat.EEEE(locale).format(DateTime(2024, 1, 1 + day.index));
+}
+
+/// Trims a `HH:mm[:ss]` time string to `HH:mm` for display.
+String _hhmm(String time) => time.length >= 5 ? time.substring(0, 5) : time;

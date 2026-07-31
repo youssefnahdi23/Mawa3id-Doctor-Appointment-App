@@ -295,5 +295,9 @@
   "profileAccountSettings": "Account settings",
   "profileMedicalHistory": "Medical history",
   "profileMedicalHistorySubtitle": "Past prescriptions & diagnoses",
-  "profileNotificationsSubtitle": "Alerts for upcoming visits"
+  "profileNotificationsSubtitle": "Alerts for upcoming visits",
+  "consultationHours": "Consultation hours",
+  "rdvOnlyLabel": "By appointment only",
+  "walkInWelcome": "Walk-ins welcome",
+  "rdvOnlyToggle": "Appointment only (no walk-ins)"
 }
