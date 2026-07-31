@@ -114,5 +114,42 @@ void main() {
     await repository.cancel(11);
     verify(() => dio.put<Map<String, dynamic>>('/api/appointments/11/cancel'))
         .called(1);
+    await repository.noShow(11);
+    verify(() =>
+            dio.put<Map<String, dynamic>>('/api/appointments/11/no-show'))
+        .called(1);
+  });
+
+  test('reschedule() PUTs the new wall-clock startTime', () async {
+    when(() => dio.put<Map<String, dynamic>>(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => _ok({..._appointmentJson, 'status': 'ACCEPTED'}));
+
+    await repository.reschedule(11, DateTime(2026, 7, 14, 10, 30));
+
+    final captured = verify(() => dio.put<Map<String, dynamic>>(captureAny(),
+        data: captureAny(named: 'data'))).captured;
+    expect(captured[0], '/api/appointments/11/reschedule');
+    expect(captured[1], {'startTime': '2026-07-14T10:30:00'});
+  });
+
+  test('status filter uses the NO_SHOW wire name', () async {
+    when(() => dio.get<Map<String, dynamic>>(any(),
+            queryParameters: any(named: 'queryParameters')))
+        .thenAnswer((_) async => _ok({
+              'content': [],
+              'page': {
+                'size': 20,
+                'number': 0,
+                'totalElements': 0,
+                'totalPages': 0
+              },
+            }));
+
+    await repository.queue(status: AppointmentStatus.noShow);
+
+    final captured = verify(() => dio.get<Map<String, dynamic>>(captureAny(),
+            queryParameters: captureAny(named: 'queryParameters')))
+        .captured;
+    expect((captured[1] as Map)['status'], 'NO_SHOW');
   });
 }

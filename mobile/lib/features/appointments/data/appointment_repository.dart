@@ -81,6 +81,18 @@ class AppointmentRepository {
   Future<AppointmentResponse> reject(int id) => _transition(id, 'reject');
   Future<AppointmentResponse> complete(int id) => _transition(id, 'complete');
   Future<AppointmentResponse> cancel(int id) => _transition(id, 'cancel');
+  Future<AppointmentResponse> noShow(int id) => _transition(id, 'no-show');
+
+  /// Move an appointment to a new start time.
+  Future<AppointmentResponse> reschedule(int id, DateTime startTime) {
+    return apiCall(() async {
+      final response = await _dio.put<Map<String, dynamic>>(
+        '/api/appointments/$id/reschedule',
+        data: {'startTime': WallClock.format(startTime)},
+      );
+      return AppointmentResponse.fromJson(response.data!);
+    });
+  }
 
   Future<PageResponse<AppointmentResponse>> _paged(
     String path,
@@ -111,9 +123,8 @@ class AppointmentRepository {
   }
 }
 
-/// Wire name of a status (`PENDING`, ...), for query parameters.
-String statusApiName(AppointmentStatus status) =>
-    status.name.toUpperCase();
+/// Wire name of a status (`PENDING`, `NO_SHOW`, ...), for query parameters.
+String statusApiName(AppointmentStatus status) => status.wireName;
 
 /// Clamps a slot-range end so `[from, to]` spans at most
 /// [AppointmentRepository.maxSlotRangeDays] inclusive calendar days.

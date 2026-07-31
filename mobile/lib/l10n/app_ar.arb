@@ -256,5 +256,11 @@
   "feedbackCategoryPraise": "إشادة",
   "feedbackCategoryOther": "أخرى",
   "feedbackMessage": "رسالتك",
-  "feedbackSubmit": "إرسال"
+  "feedbackSubmit": "إرسال",
+  "statusNoShow": "لم يحضر",
+  "actionNoShow": "لم يحضر",
+  "actionReschedule": "إعادة جدولة",
+  "rescheduleConfirmTitle": "تأكيد إعادة الجدولة",
+  "rescheduleConfirm": "النقل إلى هذا الموعد",
+  "appointmentRescheduled": "تم تغيير الموعد"
 }

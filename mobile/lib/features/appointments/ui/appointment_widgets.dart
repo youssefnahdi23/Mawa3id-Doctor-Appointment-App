@@ -12,6 +12,7 @@ String appointmentStatusLabel(
     AppointmentStatus.rejected => l10n.statusRejected,
     AppointmentStatus.cancelled => l10n.statusCancelled,
     AppointmentStatus.completed => l10n.statusCompleted,
+    AppointmentStatus.noShow => l10n.statusNoShow,
   };
 }
 

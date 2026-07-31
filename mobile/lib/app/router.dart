@@ -147,6 +147,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                         state.uri.queryParameters['doctorId']!),
                   ),
                 ),
+                GoRoute(
+                  path: ':id/reschedule',
+                  builder: (_, state) => SlotPickerScreen(
+                    doctorId: int.parse(
+                        state.uri.queryParameters['doctorId']!),
+                    rescheduleAppointmentId:
+                        int.parse(state.pathParameters['id']!),
+                  ),
+                ),
               ],
             ),
           ]),
@@ -175,6 +184,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                   path: ':id/record',
                   builder: (_, state) => RecordFormScreen(
                       appointmentId: int.parse(state.pathParameters['id']!)),
+                ),
+                GoRoute(
+                  path: ':id/reschedule',
+                  builder: (_, state) => SlotPickerScreen(
+                    doctorId: int.parse(
+                        state.uri.queryParameters['doctorId']!),
+                    rescheduleAppointmentId:
+                        int.parse(state.pathParameters['id']!),
+                  ),
                 ),
               ],
             ),

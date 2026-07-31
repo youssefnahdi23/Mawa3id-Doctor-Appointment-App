@@ -256,5 +256,11 @@
   "feedbackCategoryPraise": "Praise",
   "feedbackCategoryOther": "Other",
   "feedbackMessage": "Your message",
-  "feedbackSubmit": "Send"
+  "feedbackSubmit": "Send",
+  "statusNoShow": "No-show",
+  "actionNoShow": "No-show",
+  "actionReschedule": "Reschedule",
+  "rescheduleConfirmTitle": "Confirm reschedule",
+  "rescheduleConfirm": "Move to this slot",
+  "appointmentRescheduled": "Appointment rescheduled"
 }
